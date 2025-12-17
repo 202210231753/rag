@@ -1,0 +1,102 @@
+# 【环境】一键启动数据库和后端
+version: '3.8'
+
+services:
+  # ------------------------------------
+  # 1. 你的后端 (FastAPI + LlamaIndex)
+  # ------------------------------------
+  backend:
+    build: .
+    container_name: rag_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app            # 代码热挂载 (改本地代码，容器内即时生效)
+    env_file:
+      - .env              # 读取环境变量
+    environment:
+      # 覆盖 .env 里的 localhost，指向 Docker 内部服务名
+      - DB_SERVER=mysql_db
+      - MILVUS_HOST=milvus-standalone
+    depends_on:
+      - mysql_db
+      - milvus-standalone
+    # 确保数据库和 Milvus 启动后再启动后端
+    restart: always
+
+  # ------------------------------------
+  # 2. MySQL (存储文件列表等元数据)
+  # ------------------------------------
+  mysql_db:
+    image: mysql:8.0
+    container_name: rag_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    # 关键：设置 utf8mb4 以支持中文存储
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # ------------------------------------
+  # 3. Milvus 全家桶 (存储向量)
+  # ------------------------------------
+  
+  # 3.1 Etcd (Milvus 的元数据存储)
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - milvus_etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls=http://0.0.0.0:2379 --data-dir /etcd
+
+  # 3.2 MinIO (Milvus 的对象存储)
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - milvus_minio_data:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # 3.3 Milvus Standalone (向量库本体)
+  milvus-standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.3.13
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: minioadmin
+      MINIO_SECRET_ACCESS_KEY: minioadmin
+    volumes:
+      - milvus_data:/var/lib/milvus
+    ports:
+      - "19530:19530"  # Milvus API 端口
+      - "9091:9091"    # Web 管理端口
+    depends_on:
+      - etcd
+      - minio
+
+volumes:
+  mysql_data:
+  milvus_etcd_data:
+  milvus_minio_data:
+  milvus_data:

@@ -1,0 +1,8 @@
+# 【Git】忽略 __pycache__ 等文件
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
