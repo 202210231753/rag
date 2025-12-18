@@ -1,7 +1,9 @@
+20251218：现在已部署qwen3 4b、es、mysql、milvus、redis（详情如地址见部署指南）
+已下载qwen3 embedding0.6b，路径：/home/yl/yl/yl/code-llm/Qwen/Qwen3-Embedding-0.6B
+Qwen3-4B-Instruct-2507已部署在服务器上（vllm），端口号8000
 
 
-
-大家就按照这个架构来开发，milvus和mysql我都通过docker搭建了。
+大家就按照这个架构来开发
 
 环境部署：
 
@@ -17,6 +19,7 @@ pip install -r requirements.txt
 ```
 
 
+然后要将.env.example改为.env
 
 
 
@@ -41,6 +44,18 @@ mysql+milvus的端口
 > 
 
 
+Qwen3-4B路径：:/home/yl/yl/yl/code-llm/Qwen/Qwen3-4B-Instruct-2507
+Qwen3-embedding::/home/yl/yl/yl/code-llm/Qwen/Qwen3-Embedding-0.6B
 
 
-
+Qwen3-4B运行命令：（不用你们运行）
+CUDA_VISIBLE_DEVICES=0 \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+python -m vllm.entrypoints.openai.api_server \
+  --model /home/yl/yl/yl/code-llm/Qwen/Qwen3-4B-Instruct-2507 \
+  --served-model-name Qwen3-4B-Instruct-2507 \
+  --host 0.0.0.0 --port 8000 \
+  --dtype float16 \
+  --max-model-len 8192 \
+  --gpu-memory-utilization 0.70 \
+  --max-num-seqs 32
