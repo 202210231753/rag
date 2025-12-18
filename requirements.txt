@@ -26,6 +26,16 @@ llama-index-vector-stores-milvus
 # 文件读取器 (用于解析 PDF, Docx 等)
 llama-index-readers-file
 
+# --- ElasticSearch (BM25 关键词检索) ---
+elasticsearch>=8.11.0
+elasticsearch[async]
+
+# --- 中文分词 ---
+jieba>=0.42.1
+
+# --- 日志库 ---
+loguru>=0.7.0
+
 # --- Utilities ---
 python-dotenv>=1.0.0
 requests

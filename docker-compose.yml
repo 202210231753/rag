@@ -18,9 +18,11 @@ services:
       # 覆盖 .env 里的 localhost，指向 Docker 内部服务名
       - DB_SERVER=mysql_db
       - MILVUS_HOST=milvus-standalone
+      - ES_HOST=elasticsearch
     depends_on:
       - mysql_db
       - milvus-standalone
+      - elasticsearch
     # 确保数据库和 Milvus 启动后再启动后端
     restart: always
 
@@ -95,8 +97,30 @@ services:
       - etcd
       - minio
 
+  # ------------------------------------
+  # 4. ElasticSearch (BM25 关键词检索)
+  # ------------------------------------
+  elasticsearch:
+    container_name: rag_elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false  # 开发环境关闭安全认证
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"  # 限制内存使用
+    ports:
+      - "9200:9200"   # REST API
+      - "9300:9300"   # 节点通信
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   mysql_data:
   milvus_etcd_data:
   milvus_minio_data:
   milvus_data:
+  es_data:
