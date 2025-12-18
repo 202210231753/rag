@@ -23,16 +23,16 @@ flowchart LR
     classDef fusion fill:#F3E5F5,stroke:#8E24AA,stroke-width:1px,color:#4A148C;
     classDef rerank fill:#FCE4EC,stroke:#D81B60,stroke-width:1px,color:#880E4F;
 
-    User((Client\nQuery)):::api --> API{{FastAPI Router\nPOST /api/v1/search/multi-recall}}:::api
-    API --> Ctx[SearchGateway\n创建 SearchContext\n(embedding + tokenizer)]:::svc
-    Ctx -->|向量| VectorRecall[VectorRecallStrategy\nMilvus 向量召回]:::svc
-    Ctx -->|关键词| KeywordRecall[KeywordRecallStrategy\nElasticSearch BM25]:::svc
-    VectorRecall --> Milvus[(Milvus\nCollection: documents)]:::infra
-    KeywordRecall --> ES[(ElasticSearch\nIndex: rag_documents)]:::infra
+    User((Client<br/>Query)):::api --> API{{FastAPI Router<br/>POST /api/v1/search/multi-recall}}:::api
+    API --> Ctx[SearchGateway<br/>创建 SearchContext<br/>(embedding + tokenizer)]:::svc
+    Ctx -->|向量| VectorRecall[VectorRecallStrategy<br/>Milvus 向量召回]:::svc
+    Ctx -->|关键词| KeywordRecall[KeywordRecallStrategy<br/>ElasticSearch BM25]:::svc
+    VectorRecall --> Milvus[(Milvus<br/>Collection: documents)]:::infra
+    KeywordRecall --> ES[(ElasticSearch<br/>Index: rag_documents)]:::infra
     VectorRecall --> Merge
     KeywordRecall --> Merge
-    Merge[RRFMergeImpl\n1/(60+rank)]:::fusion --> OptionalRerank{{IRerankService?\n(预留)}}:::rerank
-    OptionalRerank --> Result[SearchResult\nresults + recall_stats]:::api
+    Merge[RRFMergeImpl<br/>1/(60+rank)]:::fusion --> OptionalRerank{{IRerankService?<br/>(预留)}}:::rerank
+    OptionalRerank --> Result[SearchResult<br/>results + recall_stats]:::api
     Merge --> Result
     Result --> API
     API --> User
