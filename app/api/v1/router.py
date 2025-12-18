@@ -7,5 +7,5 @@ api_router = APIRouter()
 # 挂载你的模块 (访问地址: /api/v1/viewer/...)
 api_router.include_router(viewer.router, prefix="/viewer", tags=["数据查看模块"])
 
-# 挂载同事的模块 (访问地址: /api/v1/chat/...)
+# # 挂载同事的模块 (访问地址: /api/v1/chat/...)
 # api_router.include_router(chat.router, prefix="/chat", tags=["RAG对话模块"])
