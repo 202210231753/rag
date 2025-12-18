@@ -1,4 +1,4 @@
-<img width="965" height="940" alt="image" src="https://github.com/user-attachments/assets/b6edfd43-3505-40d3-beed-181dbb6714e5" />
+
 
 
 大家就按照这个架构来开发，milvus和mysql我都通过docker搭建了。
