@@ -19,7 +19,7 @@ pip install -r requirements.txt
 ```
 
 
-然后要将.env.example改为.env
+然后要将env.example改为.env
 
 
 
