@@ -4,6 +4,8 @@ Qwen3-4B-Instruct-2507已部署在服务器上（vllm），端口号8000
 
 
 大家就按照这个架构来开发
+<img width="965" height="940" alt="image" src="https://github.com/user-attachments/assets/8ad7afaa-cbc4-42b7-af37-eae34345240d" />
+
 
 环境部署：
 
