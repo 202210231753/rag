@@ -1,0 +1,31 @@
+# 【依赖】Python 库列表
+# --- Web Framework (FastAPI) ---
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart    # 文件上传必需
+pydantic>=2.5.0
+pydantic-settings
+
+# --- Database Drivers ---
+# MySQL
+pymysql>=1.1.0
+cryptography
+sqlalchemy>=2.0.25
+
+# --- LlamaIndex Core & Components (v0.10+) ---
+# 核心库
+llama-index-core>=0.10.0
+
+# LLM 和 Embedding 模型 (这里以 OpenAI 为例)
+llama-index-llms-openai
+llama-index-embeddings-openai
+
+# 向量数据库 (Milvus 专用集成包)
+llama-index-vector-stores-milvus
+
+# 文件读取器 (用于解析 PDF, Docx 等)
+llama-index-readers-file
+
+# --- Utilities ---
+python-dotenv>=1.0.0
+requests
