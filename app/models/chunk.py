@@ -11,7 +11,17 @@ class Chunk(Base):
     document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     
     # 核心内容
+    title = Column(String(255), nullable=True, comment="标题")
     content = Column(Text, nullable=False, comment="切片文本内容")
+    image_urls = Column(JSON, nullable=True, comment="图片URL列表")
+    data_type = Column(String(50), default="text", comment="数据类型: text/image/table等")
+    
+    # 纠错记录
+    error_words = Column(Text, nullable=True, comment="错误词/原词")
+    correct_words = Column(Text, nullable=True, comment="正确词/修正词")
+    
+    # 权限与审计
+    owner_user_id = Column(BigInteger, nullable=True, comment="所属用户ID")
     
     # 向量数据库关联
     # Milvus 的 ID 通常是 int64，这里用 BigInteger

@@ -45,7 +45,13 @@ def setup_data():
         chunk = Chunk(
             id=8888,
             document_id=9999,
+            title="合同第一章",
             content="原文：甲方应支付乙方100元。",
+            image_urls=["http://example.com/img1.png", "http://example.com/img2.png"],
+            data_type="text",
+            error_words="100元",
+            correct_words="1000万",
+            owner_user_id=1001,
             vector_id=None, # 暂时不测 Milvus 的手动插入，太复杂，主要测 API 逻辑
             index=0,
             is_active=True
@@ -81,6 +87,14 @@ def test_get_chunks():
         data = resp.json()
         if len(data) > 0 and data[0]['id'] == 8888:
             print(f"✅ PASS: 成功获取切片内容: {data[0]['content']}")
+            # 验证新字段
+            chunk_data = data[0]
+            if chunk_data.get('title') == "合同第一章" and \
+               chunk_data.get('data_type') == "text" and \
+               chunk_data.get('image_urls') == ["http://example.com/img1.png", "http://example.com/img2.png"]:
+                print("✅ PASS: 新字段 (title, data_type, image_urls) 验证通过")
+            else:
+                print(f"❌ FAIL: 新字段验证失败: {chunk_data}")
         else:
             print("❌ FAIL: 切片数据不匹配")
     else:

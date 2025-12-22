@@ -20,7 +20,13 @@ class ChunkStatusUpdate(BaseModel):
 
 class ChunkResponse(BaseModel):
     id: int
+    title: Optional[str] = None
     content: str
+    image_urls: Optional[List[str]] = None
+    data_type: Optional[str] = "text"
+    error_words: Optional[str] = None
+    correct_words: Optional[str] = None
+    owner_user_id: Optional[int] = None
     is_active: bool
     index: int
     vector_id: Optional[int] = None
