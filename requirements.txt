@@ -36,6 +36,13 @@ jieba>=0.42.1
 # --- 日志库 ---
 loguru>=0.7.0
 
+# --- Rerank 相关依赖 ---
+# HTTP 客户端（用于调用 TEI 接口）
+httpx>=0.25.0
+
+# 本地重排模型支持（可选，如果使用 LocalRerankModel）
+# sentence-transformers>=2.2.0
+
 # --- Utilities ---
 python-dotenv>=1.0.0
 requests
