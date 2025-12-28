@@ -13,3 +13,5 @@ milvus：ID，内容片段，标签（根据标签区分query和comment）
 ### query推荐
 
 ### 猜你喜欢
+
+运行rag_demo.py可以测试功能
