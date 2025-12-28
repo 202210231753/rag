@@ -69,7 +69,10 @@ services:
       MINIO_SECRET_KEY: minioadmin
     volumes:
       - milvus_minio_data:/minio_data
-    command: minio server /minio_data
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -139,6 +142,19 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # ------------------------------------
+  # 6. Attu (Milvus 可视化管理界面)
+  # ------------------------------------
+  attu:
+    container_name: milvus-attu
+    image: zilliz/attu:v2.3.5
+    environment:
+      MILVUS_URL: milvus-standalone:19530
+    ports:
+      - "19002:3000"
+    depends_on:
+      - milvus-standalone
 
 volumes:
   mysql_data:

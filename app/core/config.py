@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     # Models
     EMBEDDING_MODEL_PATH: str
     LLM_MODEL_API: str = "http://localhost:8000/v1"
+    
+    # MinerU
+    MINERU_API_URL: str = "http://127.0.0.1:18000/file_parse"
+
+    # MinIO
+    MINIO_ENDPOINT: str = "localhost:19000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET_NAME: str = "rag-documents"
+    MINIO_SECURE: bool = False
 
     # OpenAI (Optional fallback)
     OPENAI_API_KEY: str = ""

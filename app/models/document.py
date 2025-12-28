@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, JSON, Enum
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Enum, Boolean
 from sqlalchemy.sql import func
 from app.core.database import Base
 import enum
@@ -19,6 +19,7 @@ class Document(Base):
     
     # 状态管理
     status = Column(String(50), default=DocStatus.PENDING, comment="处理状态")
+    is_active = Column(Boolean, default=True, comment="是否启用(上下线)")
     error_msg = Column(String(1024), nullable=True, comment="错误信息")
     
     # 统计信息

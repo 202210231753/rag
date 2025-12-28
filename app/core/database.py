@@ -36,3 +36,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 6. 定义 Base 类
 # 所有的 Model (比如 Document) 都要继承这个类
 Base = declarative_base()
+
+# 7. 依赖注入函数 (Dependency)
+# FastAPI 接口里用这个来获取数据库会话
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
