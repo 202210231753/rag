@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.api import deps
 # from app.schemas.document_schema import DocumentResponse # 导入你定义的Schema
-# from app.services.viewer_service import ViewerService    # 导入你写的业务类
+# from app.services.viewer.viewer_service import ViewerService    # 导入你写的业务类
 
 router = APIRouter()
 

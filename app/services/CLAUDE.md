@@ -308,7 +308,7 @@ Settings.chunk_overlap = 50
 ```python
 import pytest
 from unittest.mock import Mock, patch
-from app.services.rag_service import RAGService
+from app.services.rag.rag_service import RAGService
 
 @pytest.fixture
 def mock_db():
@@ -396,12 +396,12 @@ except Exception:
 ## 相关文件清单
 
 ### 待实现文件
-- `/home/yl/yl/wy/rag/rag_project/app/services/rag_service.py` (空文件)
+- `app/services/rag_service.py` (空文件)
   - 需实现文档上传处理
   - 需实现 RAG 查询逻辑
   - 需实现文件解析和向量化
 
-- `/home/yl/yl/wy/rag/rag_project/app/services/viewer_service.py` (空文件)
+- `app/services/viewer_service.py` (空文件)
   - 需实现文档列表查询
   - 需实现文档详情查询
   - 需实现文档删除逻辑

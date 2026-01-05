@@ -29,3 +29,9 @@ llama-index-readers-file
 # --- Utilities ---
 python-dotenv>=1.0.0
 requests
+
+# --- Model Support (Qwen/HuggingFace) ---
+
+transformers>=4.37.0
+accelerate>=0.27.0
+sentence-transformers>=2.3.0
