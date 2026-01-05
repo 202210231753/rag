@@ -190,4 +190,31 @@ class RagService:
         finally:
             db.close()
 
+    def update_doc_permission(self, document_id: int, visibility: str, group_ids: list = None):
+        """
+        更新文档的权限配置
+        """
+        db = SessionLocal()
+        try:
+            doc = db.query(Document).filter(Document.id == document_id).first()
+            if not doc:
+                raise ValueError(f"Document {document_id} not found")
+            
+            # 1. 更新 MySQL
+            doc.visibility = visibility
+            doc.authorized_group_ids = group_ids
+            db.commit()
+            
+            # 2. TODO: 同步更新 Milvus
+            # 目前 Milvus 中的向量数据缺少权限字段，需要重新索引或更新元数据
+            # 暂时只更新 MySQL，后续需要实现 Milvus 的同步逻辑
+            logger.info(f"Updated permission for document {document_id}: {visibility}, groups: {group_ids}")
+            
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error updating permission for doc {document_id}: {str(e)}")
+            raise e
+        finally:
+            db.close()
+
 rag_service = RagService()

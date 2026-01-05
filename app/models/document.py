@@ -9,6 +9,11 @@ class DocStatus(str, enum.Enum):
     COMPLETED = "completed" # 解析完成
     FAILED = "failed"       # 解析失败
 
+class Visibility(str, enum.Enum):
+    PRIVATE = "private"     # 仅自己可见
+    PUBLIC = "public"       # 全员可见
+    GROUP = "group"         # 指定组可见
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -21,6 +26,10 @@ class Document(Base):
     status = Column(String(50), default=DocStatus.PENDING, comment="处理状态")
     is_active = Column(Boolean, default=True, comment="是否启用(上下线)")
     error_msg = Column(String(1024), nullable=True, comment="错误信息")
+
+    # 权限控制
+    visibility = Column(String(50), default=Visibility.PRIVATE, comment="可见性")
+    authorized_group_ids = Column(JSON, nullable=True, comment="授权组ID列表(当visibility=group时有效)")
     
     # 统计信息
     chunk_count = Column(Integer, default=0, comment="切片数量")

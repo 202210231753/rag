@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.models.document import Document
 from app.services.rag_service import rag_service
+from app.schemas.document_schema import DocumentPermissionUpdate
 
 router = APIRouter()
 
@@ -42,6 +43,45 @@ async def set_document_status(
         "message": "Status updated successfully",
         "id": document_id,
         "is_active": status_update.is_active
+    }
+
+@router.put("/{document_id}/permission", summary="配置文档数据权限")
+async def update_document_permission(
+    document_id: int,
+    permission_update: DocumentPermissionUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    配置文档的可见性权限。
+    - **visibility**: private (仅自己), public (全员), group (指定组)
+    - **authorized_group_ids**: 当 visibility=group 时，指定可见的组 ID 列表
+    """
+    # 1. 检查文档是否存在
+    doc = db.query(Document).filter(Document.id == document_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # 2. 校验参数
+    if permission_update.visibility == "group" and not permission_update.authorized_group_ids:
+        raise HTTPException(status_code=400, detail="authorized_group_ids is required when visibility is 'group'")
+
+    # 3. 调用 Service
+    try:
+        rag_service.update_doc_permission(
+            document_id, 
+            permission_update.visibility, 
+            permission_update.authorized_group_ids
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update permission: {str(e)}")
+    
+    return {
+        "message": "Permission updated successfully",
+        "id": document_id,
+        "visibility": permission_update.visibility,
+        "authorized_group_ids": permission_update.authorized_group_ids
     }
 
 @router.get("/list", summary="获取文档列表")
