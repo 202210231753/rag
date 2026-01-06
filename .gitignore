@@ -8,3 +8,38 @@ env/
 venv/
 .claude/
 
+# 测试相关文件
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# 文档目录
+docs/
+
+# 脚本目录
+scripts/              
+
+# 演示和查询脚本（非核心功能）
+query_synonyms.py
+
+# GitHub相关文档（非必要）
+.github/PUSH_GUIDE.md
+
+# IDE和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.bak
+.DS_Store
+
