@@ -29,3 +29,13 @@ llama-index-readers-file
 # --- Utilities ---
 python-dotenv>=1.0.0
 requests
+
+# --- Elasticsearch ---
+elasticsearch>=8.11.0
+
+# --- Embedding (可选，用于同义词挖掘) ---
+# transformers>=4.30.0  # 如果使用本地 Embedding 模型
+# torch>=2.0.0  # 如果使用本地 Embedding 模型
+
+# --- 定时任务 (可选，用于同义词挖掘调度) ---
+# apscheduler>=3.10.0  # 如果需要定时任务

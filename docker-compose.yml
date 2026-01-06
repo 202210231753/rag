@@ -9,7 +9,7 @@ services:
     build: .
     container_name: rag_backend
     ports:
-      - "8000:8000"
+      - "8888:8888"
     volumes:
       - .:/app            # 代码热挂载 (改本地代码，容器内即时生效)
     env_file:
