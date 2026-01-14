@@ -17,6 +17,7 @@ from app.rag.fusion.base import IFusionService
 from app.rag.rerank.base import IRerankService
 from app.services.embedding_service import EmbeddingService
 from app.services.tokenizer_service import TokenizerService
+from app.rag.ranking.engine import RankingEngine
 
 
 class SearchGateway:
@@ -38,6 +39,7 @@ class SearchGateway:
         recall_strategies: List[IRecallStrategy],
         fusion_service: IFusionService,
         rerank_service: Optional[IRerankService] = None,
+        ranking_engine: Optional[RankingEngine] = None,
     ):
         """
         初始化搜索网关
@@ -48,16 +50,19 @@ class SearchGateway:
             recall_strategies: 召回策略列表（向量、关键词等）
             fusion_service: 融合服务
             rerank_service: 重排服务（可选）
+            ranking_engine: 排序引擎（可选）
         """
         self.embedding_service = embedding_service
         self.tokenizer_service = tokenizer_service
         self.recall_strategies = recall_strategies
         self.fusion_service = fusion_service
         self.rerank_service = rerank_service
+        self.ranking_engine = ranking_engine
 
         logger.info(
             f"SearchGateway 初始化完成: recall_strategies={len(recall_strategies)}, "
-            f"rerank={'enabled' if rerank_service else 'disabled'}"
+            f"rerank={'enabled' if rerank_service else 'disabled'}, "
+            f"ranking={'enabled' if ranking_engine else 'disabled'}"
         )
 
     async def search(
@@ -66,6 +71,7 @@ class SearchGateway:
         top_n: int = 10,
         recall_top_k: int = 100,
         enable_rerank: bool = False,
+        enable_ranking: bool = True,
     ) -> SearchResult:
         """
         执行多路召回搜索
@@ -75,13 +81,15 @@ class SearchGateway:
         2. 并行召回（多个策略并发执行）
         3. RRF 融合
         4. 重排（可选）
-        5. 返回结果
+        5. 排序引擎（可选）
+        6. 返回结果
 
         Args:
             query: 用户查询
             top_n: 返回结果数量
             recall_top_k: 每路召回的 TopK
             enable_rerank: 是否启用重排
+            enable_ranking: 是否启用排序引擎
 
         Returns:
             搜索结果
@@ -91,7 +99,8 @@ class SearchGateway:
         try:
             logger.info(
                 f"[SearchGateway] 开始搜索: query='{query}', top_n={top_n}, "
-                f"recall_top_k={recall_top_k}, enable_rerank={enable_rerank}"
+                f"recall_top_k={recall_top_k}, enable_rerank={enable_rerank}, "
+                f"enable_ranking={enable_ranking}"
             )
 
             # Step 1: 创建搜索上下文
@@ -118,7 +127,16 @@ class SearchGateway:
             else:
                 final_results = merged_candidates[:top_n]
 
-            # Step 5: 构建响应
+            # Step 5: 排序引擎（可选）
+            if enable_ranking and self.ranking_engine:
+                logger.info("[SearchGateway] 应用排序引擎...")
+                final_results = await self.ranking_engine.apply(
+                    query=query,
+                    items=final_results,
+                    top_n=top_n,
+                )
+
+            # Step 6: 构建响应
             took_ms = (time.time() - start_time) * 1000
             result = self._build_search_result(
                 query, final_results, candidate_lists, took_ms

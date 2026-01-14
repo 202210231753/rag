@@ -12,6 +12,9 @@ pymysql>=1.1.0
 cryptography
 sqlalchemy>=2.0.25
 
+# --- Redis ---
+redis[hiredis]>=5.0.0  # 异步Redis客户端
+
 # --- LlamaIndex Core & Components (v0.10+) ---
 # 核心库
 llama-index-core>=0.10.0
