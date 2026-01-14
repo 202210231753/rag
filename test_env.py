@@ -12,15 +12,14 @@ load_dotenv()
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-from llama_index.core import VectorStoreIndex, Document, StorageContext
+from llama_index.core import VectorStoreIndex, Document, StorageContext, Settings
 from llama_index.vector_stores.milvus import MilvusVectorStore
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAI
+from llama_index.core.embeddings import MockEmbedding
+from llama_index.core.llms import MockLLM
 
-# 确保你有 OPENAI_API_KEY
-if not os.getenv("OPENAI_API_KEY"):
-    print("❌ 错误: 请在 .env 文件中设置 OPENAI_API_KEY")
-    exit(1)
+# 临时使用 Mock 模型进行环境测试，无需 API Key
+Settings.llm = MockLLM()
+Settings.embed_model = MockEmbedding(embed_dim=1536)
 
 async def test_rag_async():
     print("🚀 开始异步测试 LlamaIndex + Milvus 环境...")

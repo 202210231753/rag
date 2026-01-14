@@ -29,3 +29,8 @@ llama-index-readers-file
 # --- Utilities ---
 python-dotenv>=1.0.0
 requests
+
+# --- Chinese Tokenizers ---
+# 用于“中文分词模块”：可通过接口在 jieba / HanLP 间切换
+jieba>=0.42.1
+hanlp>=2.1.0

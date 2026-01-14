@@ -1,5 +1,4 @@
 # 【环境】一键启动数据库和后端
-version: '3.8'
 
 services:
   # ------------------------------------
@@ -62,7 +61,8 @@ services:
 
   # 3.2 MinIO (Milvus 的对象存储)
   minio:
-    container_name: milvus-minio
+    # 避免与同机其他项目的固定容器名冲突
+    container_name: rag_project-milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
       MINIO_ACCESS_KEY: minioadmin
@@ -142,6 +142,10 @@ services:
 
 volumes:
   mysql_data:
+    # 统一使用同一个“外部数据卷”，避免不同 compose project 各自创建 mysql_data 导致“表看起来丢了”
+    # 需要提前在宿主机执行：docker volume create rag_project_mysql_data
+    name: rag_project_mysql_data
+    external: true
   milvus_etcd_data:
   milvus_minio_data:
   milvus_data:

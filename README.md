@@ -23,6 +23,12 @@ pip install -r requirements.txt
 
 然后要将env.example改为.env
 
+Docker 数据卷统一（MySQL）：
+
+- 本项目 `docker-compose.yml` 已固定使用外部卷 `rag_project_mysql_data`（避免不同目录 `docker compose up` 时各自创建/绑定不同的 `mysql_data` 导致数据不一致）。
+- 第一次在这台机器上使用前，先执行：`docker volume create rag_project_mysql_data`
+- 注意：不要随意执行 `docker compose down -v`，否则会删除数据卷导致真实数据丢失。
+
 
 
 本地启动后端：

@@ -38,6 +38,7 @@ class UserProfileStats(BaseModel):
     new_users: int = Field(..., alias="newUsers")
     gender_dist: List[LabelValueRatio] = Field(default_factory=list, alias="genderDist")
     age_dist: List[LabelValue] = Field(default_factory=list, alias="ageDist")
+    city_dist: List[LabelValueRatio] = Field(default_factory=list, alias="cityDist")
 
     model_config = ConfigDict(populate_by_name=True)
 

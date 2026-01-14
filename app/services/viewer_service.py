@@ -80,11 +80,29 @@ class ViewerService:
                     age_buckets["35岁以上"] += 1
             age_dist = [LabelValue(label=label, value=value) for label, value in age_buckets.items()]
 
+        city_dist: List[LabelValueRatio] = []
+        if not dimensions_set or "city" in dimensions_set:
+            city_rows = (
+                self.db.query(UserProfile.city, func.count(UserProfile.id))
+                .group_by(UserProfile.city)
+                .order_by(func.count(UserProfile.id).desc())
+                .all()
+            )
+            city_dist = [
+                LabelValueRatio(
+                    label=city or "未知",
+                    value=count,
+                    ratio=round(count / total_users, 2) if total_users else 0.0,
+                )
+                for city, count in city_rows
+            ]
+
         return UserProfileStats(
             total_users=total_users,
             new_users=new_users,
             gender_dist=gender_dist,
             age_dist=age_dist,
+            city_dist=city_dist,
         )
 
     def get_user_behavior_stats(
