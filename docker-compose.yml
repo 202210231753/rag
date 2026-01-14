@@ -97,6 +97,11 @@ services:
     depends_on:
       - etcd
       - minio
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "500m"
+        max-file: "3"
 
   # ------------------------------------
   # 4. Redis (缓存和会话存储)
