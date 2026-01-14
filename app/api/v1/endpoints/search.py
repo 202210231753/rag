@@ -12,7 +12,9 @@ from app.rag.models.search_result import SearchResult
 from app.rag.search_gateway import SearchGateway
 from app.api.deps import get_search_gateway  # 从 deps 导入
 from app.api.deps import get_hot_search_service
+from app.api.deps import get_suggestion_service
 from app.hot_search.service import HotSearchService
+from app.suggest.service import SuggestService
 
 router = APIRouter()
 
@@ -22,6 +24,7 @@ async def multi_recall_search(
     request: SearchRequest,
     gateway: SearchGateway = Depends(get_search_gateway),
     hot_search: HotSearchService = Depends(get_hot_search_service),
+    suggest: SuggestService = Depends(get_suggestion_service),
 ):
     """
     多路召回搜索
@@ -60,6 +63,12 @@ async def multi_recall_search(
             await hot_search.record_search_action(request.query)
         except Exception as exc:
             logger.warning(f"[HotSearch] 记录热度失败（不影响搜索返回）: {exc}")
+
+        # 输入提示沉淀：仅在检索成功(HTTP 200)后记录；需要 user_id
+        try:
+            await suggest.record_search(request.user_id, request.query)
+        except Exception as exc:
+            logger.warning(f"[Suggest] 记录历史/词库失败（不影响搜索返回）: {exc}")
 
         logger.info(
             f"[API] 搜索成功: results={result.total}, took={result.took_ms:.2f}ms"

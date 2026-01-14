@@ -14,6 +14,9 @@ from app.hot_search.service import GovernanceService, HotSearchService
 from app.core.config import settings
 from loguru import logger
 from functools import lru_cache
+from app.suggest.keys import SuggestKeys
+from app.suggest.repository import SuggestRepository
+from app.suggest.service import SuggestService, SuggestConfig
 
 
 # ========================================
@@ -109,4 +112,24 @@ def get_hot_search_service() -> HotSearchService:
         base_increment=1.0,
         base_decay_factor=0.9,
         candidate_multiplier=3,  # Top20 场景下适当多取候选，提升过滤后命中率
+    )
+
+
+# ========================================
+# SuggestService 依赖注入（单例模式）
+# ========================================
+@lru_cache()
+def get_suggestion_service() -> SuggestService:
+    """
+    获取 SuggestService 实例（单例）
+
+    - 依赖 Redis（history/lexicon）
+    - 复用 HotSearchService 提供热搜候选
+    """
+    keys = SuggestKeys.with_prefix(settings.HOT_SEARCH_KEY_PREFIX)
+    repo = SuggestRepository(redis_client, keys=keys)
+    return SuggestService(
+        repo=repo,
+        hot_search=get_hot_search_service(),
+        config=SuggestConfig(),
     )
