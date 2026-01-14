@@ -4,6 +4,11 @@ import datetime as dt
 from dataclasses import dataclass
 from typing import Callable, Generic, TypeVar
 
+# 一个进程内（process-local）的定时缓存（TTL Cache），支持：
+# 自动过期刷新
+# 显式失效（invalidate）
+# 泛型值（可缓存任意类型）
+
 T = TypeVar("T")
 
 

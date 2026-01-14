@@ -5,12 +5,24 @@ from typing import Sequence
 
 from sqlalchemy.orm import Session
 
+from app.core.database import SessionLocal
 from app.intervention.cache import TimedCache
 from app.intervention.enums import CensorSource, MiningStatus, WhitelistStatus
 from app.intervention.matcher import AhoCorasickMatcher
 from app.intervention.miner import mine_ngrams, suggest_level
 from app.intervention.policies import CensorDecision, LevelPolicy
 from app.intervention.repositories import CensorMiningRepository, CensorRepository, WhitelistRepository
+
+# 3 个核心 Service：
+# WhitelistService	用户级白名单 / 封禁：判断某个用户是否被锁 / 是否绕过审查
+# # CensorService	实时文本审查（查词 + 决策）：
+#     给定一段文本，快速判断：
+#     是否命中敏感词
+#     命中最高等级
+#     是 mask / refuse / lock
+#     返回命中的词和位置
+# CensorMiningService	离线挖掘潜在敏感词
+
 
 
 @dataclass(frozen=True)
@@ -31,7 +43,17 @@ class WhitelistService:
 
     def _get_cache(self, db: Session) -> TimedCache[WhitelistSnapshot]:
         if self._cache is None:
-            self._cache = TimedCache(self._ttl_seconds, loader=lambda: WhitelistSnapshot(self._repo.snapshot(db)))
+            # IMPORTANT: do NOT close over the request-scoped Session here.
+            # This service is a module-level singleton and will be reused across requests.
+            # If we capture `db` from the first request, later refreshes will use a closed/invalid session.
+            def _load() -> WhitelistSnapshot:
+                s = SessionLocal()
+                try:
+                    return WhitelistSnapshot(self._repo.snapshot(s))
+                finally:
+                    s.close()
+
+            self._cache = TimedCache(self._ttl_seconds, loader=_load)
         return self._cache
 
     def invalidate(self) -> None:
@@ -70,14 +92,19 @@ class CensorService:
         self._cache: TimedCache[CensorSnapshot] | None = None
         self._matcher: AhoCorasickMatcher | None = None
 
-    def _load_snapshot(self, db: Session) -> CensorSnapshot:
-        rows = self._repo.list_active(db)
-        patterns = [(r.word, int(r.level)) for r in rows]
-        return CensorSnapshot(patterns=patterns)
+    def _load_snapshot(self) -> CensorSnapshot:
+        s = SessionLocal()
+        try:
+            rows = self._repo.list_active(s)
+            patterns = [(r.word, int(r.level)) for r in rows]
+            return CensorSnapshot(patterns=patterns)
+        finally:
+            s.close()
 
     def _get_cache(self, db: Session) -> TimedCache[CensorSnapshot]:
         if self._cache is None:
-            self._cache = TimedCache(self._ttl_seconds, loader=lambda: self._load_snapshot(db))
+            # Same reason as WhitelistService: never capture request Session in a singleton cache loader.
+            self._cache = TimedCache(self._ttl_seconds, loader=self._load_snapshot)
         return self._cache
 
     def _get_matcher(self, db: Session) -> AhoCorasickMatcher:
@@ -128,8 +155,13 @@ class CensorService:
 
 
 class CensorMiningService:
-    def __init__(self, repo: CensorMiningRepository | None = None) -> None:
+    def __init__(
+        self,
+        repo: CensorMiningRepository | None = None,
+        censor_repo: CensorRepository | None = None,
+    ) -> None:
         self._repo = repo or CensorMiningRepository()
+        self._censor_repo = censor_repo or CensorRepository()
 
     def mine_and_submit(
         self,
@@ -152,6 +184,44 @@ class CensorMiningService:
 
     def approve(self, db: Session, candidate_ids: Sequence[int], reviewed_by: str | None = None) -> int:
         return self._repo.mark_reviewed(db, candidate_ids, status=MiningStatus.approved, reviewed_by=reviewed_by)
+
+    def approve_and_publish(
+        self,
+        db: Session,
+        candidate_ids: Sequence[int],
+        *,
+        reviewed_by: str | None = None,
+        updated_by: str | None = None,
+    ) -> tuple[int, int]:
+        """Approve mining candidates and publish them into active censor word list.
+
+        Returns: (approved_count, published_count)
+        """
+
+        approved_count = self.approve(db, candidate_ids, reviewed_by=reviewed_by)
+        candidates = self._repo.get_by_ids(db, candidate_ids)
+
+        words: list[str] = []
+        levels: list[int] = []
+        for c in candidates:
+            if c.status != MiningStatus.approved.value:
+                continue
+            words.append(c.word)
+            levels.append(int(c.suggested_level))
+
+        if not words:
+            return approved_count, 0
+
+        published_count = self._censor_repo.upsert_many(
+            db,
+            words=words,
+            levels=levels,
+            approved=True,
+            source=CensorSource.mined,
+            enabled=True,
+            updated_by=updated_by or reviewed_by,
+        )
+        return approved_count, published_count
 
     def reject(self, db: Session, candidate_ids: Sequence[int], reviewed_by: str | None = None) -> int:
         return self._repo.mark_reviewed(db, candidate_ids, status=MiningStatus.rejected, reviewed_by=reviewed_by)

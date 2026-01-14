@@ -11,6 +11,9 @@ from app.intervention.enums import CensorSource, MiningStatus, WhitelistStatus
 
 UTCNOW = lambda: dt.datetime.now(dt.timezone.utc)
 
+# WhitelistEntry：用户白名单（是否绕过/放行风控）
+# CensorWord：正式生效的敏感词库
+# CensorMiningCandidate：算法/日志挖掘出来、待人工审核的候选敏感词
 
 class WhitelistEntry(Base):
     __tablename__ = "whitelist_entries"

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Tuple
 
+# 匹配算法（Aho–Corasick）
 
 @dataclass(frozen=True)
 class Match:

@@ -6,6 +6,9 @@ from typing import Iterable, Sequence
 from app.intervention.enums import CensorPolicyAction
 from app.intervention.matcher import Match
 
+# 根据匹配到的敏感词（Match，带 level），
+# 按等级策略决定：允许 / 打码 / 拒绝 / 封禁，
+# 并输出一个标准化的 CensorDecision 结果。
 
 @dataclass(frozen=True)
 class CensorDecision:

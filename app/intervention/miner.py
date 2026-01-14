@@ -4,6 +4,10 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Iterable, List, Sequence, Tuple
 
+# 定义一个 挖掘候选词的数据结构（MiningCandidate）
+# 用 n-gram + 频次统计 从文本中挖词（mine_ngrams）
+# 用一个 启发式规则 给词建议一个 level（suggest_level）
+
 
 @dataclass(frozen=True)
 class MiningCandidate:

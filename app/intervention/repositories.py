@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.intervention.enums import CensorSource, MiningStatus, WhitelistStatus
 from app.intervention.models import CensorMiningCandidate, CensorWord, WhitelistEntry
 
+# 这是一个内容风控系统的数据访问层，实现了白名单管理、敏感词库维护，以及“敏感词挖掘 → 人工审核 → 生效”的完整数据库操作闭环。
+# 这段代码只负责“数据的读 / 写（CRUD）”，不负责业务决策、不负责规则判断、不负责流程编排。
 
 class WhitelistRepository:
     def upsert_many(
@@ -154,6 +156,12 @@ class CensorMiningRepository:
             .limit(limit)
         )
         return list(db.execute(stmt).scalars().all())
+
+    def get_by_ids(self, db: Session, candidate_ids: Sequence[int]) -> list[CensorMiningCandidate]:
+        ids = [int(i) for i in candidate_ids]
+        if not ids:
+            return []
+        return list(db.execute(select(CensorMiningCandidate).where(CensorMiningCandidate.id.in_(ids))).scalars().all())
 
     def mark_reviewed(
         self,

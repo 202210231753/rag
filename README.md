@@ -11,7 +11,7 @@ Qwen3-4B-Instruct-2507已部署在服务器上（vllm），端口号8000
 
 ```
 # 1. 创建名为 rag_env 的环境，指定 Python 3.10
-conda create -n rag_env python=3.10
+conda create -n rag_env python=3.10 -y
 
 # 2. 激活环境
 conda activate rag_env

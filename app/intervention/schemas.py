@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from datetime import datetime
+
 from app.intervention.enums import WhitelistStatus
 
 
@@ -52,4 +54,16 @@ class MiningSubmitRequest(BaseModel):
 
 class MiningReviewRequest(BaseModel):
     candidate_ids: list[int] = Field(..., min_length=1)
+    reviewed_by: str | None = None
+
+
+class MiningCandidateItem(BaseModel):
+    id: int
+    word: str
+    suggested_level: int
+    score: float
+    status: str
+    evidence: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
     reviewed_by: str | None = None
