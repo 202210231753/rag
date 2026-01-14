@@ -25,14 +25,8 @@ cp env.example .env
 # 启动数据库服务（MySQL）
 docker-compose up -d mysql_db
 
-# 启动后端服务
-uvicorn app.main:app --reload --port 8888
-```
 
-### 访问服务
 
-- **API文档**: http://localhost:8888/docs
-- **健康检查**: http://localhost:8888/
 
 ## 核心功能
 
@@ -87,44 +81,13 @@ rag/
 └── docker-compose.yml         # 启动 MySQL 等依赖服务
 ```
 
-## 运行测试
 
-```bash
-# 运行所有测试
-pytest tests/
 
-# 运行特定测试
-pytest tests/test_synonym.py -v
-```
 
-## 配置说明
 
-主要配置项（`.env` 文件）：
-
-```env
-# 数据库配置
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=rag_user
-DB_PASSWORD=your_password
-DB_NAME=rag_data
 
 # 同义词功能配置
 SYNONYM_AUTO_INIT=true  # 启动时自动初始化默认同义词
 ```
 
-## 常见问题
 
-### 服务无法启动
-- 检查数据库连接是否正常
-- 检查环境变量是否正确配置
-- 检查端口是否被占用
-
-### 同义词不生效
-- 检查同义词组是否已启用
-- 检查领域（domain）是否匹配
-- 检查查询改写是否被调用
-
-更多问题请参考 [功能说明文档](docs/功能说明.md) 和 [测试与演示文档](docs/测试与演示.md)。
-
----
