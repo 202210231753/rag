@@ -5,6 +5,7 @@ import sys
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.redis_client import redis_client
 
 
 # ========================================
@@ -64,12 +65,18 @@ async def startup_event():
     logger.info(f"调试模式: {settings.DEBUG}")
     logger.info(f"日志级别: {settings.LOG_LEVEL}")
     logger.info("=" * 60)
+    
+    # 初始化 Redis 连接
+    await redis_client.connect()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """应用关闭事件"""
     logger.info("RAG 多路召回系统正在关闭...")
+    
+    # 关闭 Redis 连接
+    await redis_client.close()
 
 
 @app.get("/")

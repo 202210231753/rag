@@ -7,6 +7,8 @@ from app.services.embedding_service import EmbeddingService
 from app.services.tokenizer_service import TokenizerService
 from app.rag.strategies import VectorRecallStrategy, KeywordRecallStrategy
 from app.rag.fusion import RRFMergeImpl
+from app.rag.ranking.engine import RankingEngine
+from app.core.redis_client import redis_client
 from loguru import logger
 from functools import lru_cache
 
@@ -63,13 +65,19 @@ def get_search_gateway() -> SearchGateway:
         fusion_service = RRFMergeImpl()
         logger.info("融合服务创建完成")
 
-        # 5. 创建 SearchGateway
+        # 5. 创建排序引擎（需要 Redis 和 DB 会话）
+        db = SessionLocal()
+        ranking_engine = RankingEngine(redis_client=redis_client, db_session=db)
+        logger.info("排序引擎创建完成")
+
+        # 6. 创建 SearchGateway
         gateway = SearchGateway(
             embedding_service=embedding_service,
             tokenizer_service=tokenizer_service,
             recall_strategies=recall_strategies,
             fusion_service=fusion_service,
             rerank_service=None,  # 重排服务暂不启用
+            ranking_engine=ranking_engine,
         )
 
         logger.info("SearchGateway 初始化成功")

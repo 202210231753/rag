@@ -20,6 +20,7 @@ class SearchRequest(BaseModel):
         default=100, ge=10, le=500, description="召回阶段每路TopK"
     )
     enable_rerank: bool = Field(default=False, description="是否启用重排（暂不支持）")
+    enable_ranking: bool = Field(default=True, description="是否启用排序引擎（黑名单、多样性、位置插入）")
 
     # 可选过滤条件（预留）
     filters: Optional[dict] = Field(default=None, description="过滤条件（暂未实现）")
@@ -31,5 +32,6 @@ class SearchRequest(BaseModel):
                 "top_n": 5,
                 "recall_top_k": 100,
                 "enable_rerank": False,
+                "enable_ranking": True,
             }
         }

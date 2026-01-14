@@ -49,6 +49,7 @@ async def multi_recall_search(
             top_n=request.top_n,
             recall_top_k=request.recall_top_k,
             enable_rerank=request.enable_rerank,
+            enable_ranking=request.enable_ranking,
         )
 
         logger.info(
