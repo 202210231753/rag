@@ -59,35 +59,25 @@ docker-compose up -d mysql_db
 
 详细API文档请访问：http://localhost:8888/docs
 
-## 项目结构
+## 上传的文件结构（仅与同义词模块相关）
 
-```
+```text
 rag/
-├── app/                        # 应用代码
-│   ├── api/v1/endpoints/      # API 路由
-│   │   ├── synonym.py         # 同义词管理 + 查询改写接口
-│   │   └── synonym_mining.py  # 同义词挖掘接口
-│   ├── models/                # 数据模型（数据库层，SQLAlchemy）
-│   │   └── synonym.py         # SynonymGroup / SynonymTerm / SynonymCandidate
-│   ├── services/              # 业务逻辑层
-│   │   ├── synonym_service.py # 同义词业务逻辑（增删改查、批量导入、改写）
-│   │   └── synonym_mining.py  # 挖掘任务与策略
-│   └── schemas/               # Pydantic 数据模型
+├── app/                          # 应用代码
+│   ├── api/v1/endpoints/        # API 路由层
+│   │   ├── synonym.py           # 同义词管理 + 查询改写接口
+│   │   └── synonym_mining.py    # 同义词挖掘接口
+│   ├── models/                  # 数据模型（数据库层，SQLAlchemy）
+│   │   └── synonym.py           # SynonymGroup / SynonymTerm / SynonymCandidate
+│   ├── services/                # 业务逻辑层
+│   │   ├── synonym_service.py   # 同义词管理与查询改写
+│   │   └── synonym_mining.py    # 同义词挖掘与任务调度
+│   └── schemas/                 # Pydantic 数据模型
 │       └── synonym_schema.py
-├── app/services/README.md     # 同义词模块内部结构说明
-├── migrations/                # 同义词相关建表脚本（历史备份）
-├── README_同义词数据获取.md   # 同义词数据源与导入说明
-├── requirements.txt           # 依赖列表
-└── docker-compose.yml         # 启动 MySQL 等依赖服务
+├── app/services/README.md       # 同义词模块内部结构说明
+├── migrations/                  # 同义词相关建表脚本（历史备份）
+├── requirements.txt             # 依赖列表
+├── docker-compose.yml           # MySQL 等依赖服务编排
+├── env.example                  # 环境变量示例（DB 等基础配置）
+└── README.md                    # 本说明文件（功能说明 + 接口说明 + 文件结构）
 ```
-
-
-
-
-
-
-# 同义词功能配置
-SYNONYM_AUTO_INIT=true  # 启动时自动初始化默认同义词
-```
-
-
