@@ -20,7 +20,13 @@ htmlcov/
 docs/
 
 # 脚本目录
-scripts/              
+scripts/
+
+# 示例/数据目录（不提交到仓库）
+data/
+
+# 文档目录（如需上传文档，可删除这一条）
+docs/
 
 # 演示和查询脚本（非核心功能）
 query_synonyms.py

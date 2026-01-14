@@ -20,7 +20,7 @@ from app.schemas.synonym_schema import (
     RewritePlan,
     SynonymCandidateSchema,
 )
-from app.services.synonym_service import SynonymService, ReviewService
+from app.services.synonym_service import SynonymService
 
 logger = logging.getLogger(__name__)
 
@@ -162,8 +162,8 @@ def list_candidates(
     if status not in ["pending", "approved", "rejected"]:
         raise HTTPException(status_code=400, detail="status 必须是 pending/approved/rejected")
 
-    review_service = ReviewService(db)
-    candidates, total = review_service.list_candidates(domain, status, limit, offset)
+    service = SynonymService(db)
+    candidates, total = service.list_candidates(domain, status, limit, offset)
 
     candidate_schemas = [
         SynonymCandidateSchema(
@@ -192,8 +192,8 @@ def approve_candidates(
     db: Session = Depends(deps.get_db),
 ):
     """审核通过候选。"""
-    service = ReviewService(db)
-    count = service.approve(request.ids)
+    service = SynonymService(db)
+    count = service.approve_candidates(request.ids)
     return ApiResponse(data={"count": count}, msg=f"审核通过 {count} 个候选")
 
 
@@ -204,8 +204,8 @@ def reject_candidates(
     db: Session = Depends(deps.get_db),
 ):
     """拒绝候选。"""
-    service = ReviewService(db)
-    count = service.reject(request.ids)
+    service = SynonymService(db)
+    count = service.reject_candidates(request.ids)
     return ApiResponse(data={"count": count}, msg=f"拒绝 {count} 个候选")
 
 

@@ -12,7 +12,11 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.models.synonym import SynonymGroup, SynonymTerm, SynonymCandidate
-from app.schemas.synonym_schema import SynonymGroupSchema, SynonymTermSchema, RewritePlan
+from app.schemas.synonym_schema import (
+    SynonymGroupSchema,
+    SynonymTermSchema,
+    RewritePlan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,31 +41,39 @@ class SynonymService:
 
     # ========== 数据访问方法 ==========
 
+    def _upsert_group_tx(
+        self, domain: str, canonical: str, terms: List[Tuple[str, float]], enabled: int = 1
+    ) -> SynonymGroup:
+        """创建或更新同义词组（幂等；不在此函数内 commit/rollback，供批量导入复用）。"""
+        group = (
+            self.db.query(SynonymGroup)
+            .filter(and_(SynonymGroup.domain == domain, SynonymGroup.canonical == canonical))
+            .first()
+        )
+
+        if group:
+            group.enabled = enabled
+            # 删除旧的 terms（使用 delete() 会绕过 ORM 级联，这里是预期行为）
+            self.db.query(SynonymTerm).filter(SynonymTerm.group_id == group.group_id).delete(
+                synchronize_session=False
+            )
+        else:
+            group = SynonymGroup(domain=domain, canonical=canonical, enabled=enabled)
+            self.db.add(group)
+            self.db.flush()  # 获取 group_id
+
+        # 批量添加新的 terms
+        for term, weight in terms:
+            self.db.add(SynonymTerm(group_id=group.group_id, term=term, weight=weight))
+
+        return group
+
     def _upsert_group(
         self, domain: str, canonical: str, terms: List[Tuple[str, float]], enabled: int = 1
     ) -> SynonymGroup:
         """创建或更新同义词组（幂等，带事务回滚）。"""
         try:
-            group = (
-                self.db.query(SynonymGroup)
-                .filter(and_(SynonymGroup.domain == domain, SynonymGroup.canonical == canonical))
-                .first()
-            )
-
-            if group:
-                group.enabled = enabled
-                # 删除旧的 terms（级联删除更高效）
-                self.db.query(SynonymTerm).filter(SynonymTerm.group_id == group.group_id).delete(synchronize_session=False)
-            else:
-                group = SynonymGroup(domain=domain, canonical=canonical, enabled=enabled)
-                self.db.add(group)
-                self.db.flush()
-
-            # 批量添加新的 terms
-            for term, weight in terms:
-                synonym_term = SynonymTerm(group_id=group.group_id, term=term, weight=weight)
-                self.db.add(synonym_term)
-
+            group = self._upsert_group_tx(domain, canonical, terms, enabled=enabled)
             self.db.commit()
             self.db.refresh(group)
             return group
@@ -73,7 +85,11 @@ class SynonymService:
     def _remove_groups(self, group_ids: List[int]) -> int:
         """删除同义词组（级联删除同义词项，带事务回滚）。"""
         try:
-            # 由于外键设置了 ON DELETE CASCADE，只需删除 group 即可
+            # 先删除关联的同义词项（因为使用 delete() 方法会绕过 ORM 的级联删除）
+            self.db.query(SynonymTerm).filter(SynonymTerm.group_id.in_(group_ids)).delete(
+                synchronize_session=False
+            )
+            # 然后删除同义词组
             count = self.db.query(SynonymGroup).filter(SynonymGroup.group_id.in_(group_ids)).delete(
                 synchronize_session=False
             )
@@ -148,33 +164,107 @@ class SynonymService:
         return self._group_to_schema(group)
 
     def batch_import(self, domain: str, groups: List[dict]) -> int:
-        """批量导入同义词组（带事务回滚）。"""
+        """
+        批量导入同义词组（带事务回滚）。
+
+        支持以下输入格式：
+        - 兼容旧格式：
+          {
+            "canonical": "机器学习",
+            "synonyms": ["ML", "Machine Learning"]
+          }
+          -> 所有同义词权重默认为 1.0
+
+        - 带默认权重（整组同一个权重，例如不同数据源）：
+          {
+            "canonical": "机器学习",
+            "synonyms": ["ML", "Machine Learning"],
+            "weight": 0.8
+          }
+
+        - 细粒度权重（每个同义词单独设置）：
+          {
+            "canonical": "机器学习",
+            "synonyms": [
+              {"term": "ML", "weight": 0.9},
+              {"term": "Machine Learning", "weight": 0.8}
+            ]
+          }
+        """
         count = 0
         skipped = 0
         errors = 0
+        commit_every = 500  # 大批量导入时避免每组 commit，显著提速
 
         for idx, group_data in enumerate(groups, 1):
             try:
                 canonical = group_data.get("canonical", "").strip()
                 synonyms = group_data.get("synonyms", [])
+                # 组级别默认权重（例如不同数据源：Cilin/WordNet）
+                default_weight = float(group_data.get("weight", 1.0))
 
                 if not canonical or not synonyms:
                     skipped += 1
                     continue
 
-                unique_synonyms = list(set([s.strip() for s in synonyms if s.strip()]))
-                if not unique_synonyms:
+                # 统一构造 (term, weight) 列表
+                term_weight_pairs: List[Tuple[str, float]] = []
+
+                for s in synonyms:
+                    # 支持字符串或字典两种形式
+                    if isinstance(s, dict):
+                        term = str(s.get("term", "")).strip()
+                        if not term:
+                            continue
+                        weight_val = s.get("weight", default_weight)
+                    else:
+                        term = str(s).strip()
+                        if not term:
+                            continue
+                        weight_val = default_weight
+
+                    try:
+                        weight = float(weight_val)
+                    except (TypeError, ValueError):
+                        # 非法权重则回退为默认权重
+                        weight = default_weight
+
+                    term_weight_pairs.append((term, weight))
+
+                # 去重（按 term 去重，保留第一次出现的权重）
+                seen_terms: Set[str] = set()
+                unique_terms: List[Tuple[str, float]] = []
+                for term, weight in term_weight_pairs:
+                    if term in seen_terms:
+                        continue
+                    seen_terms.add(term)
+                    unique_terms.append((term, weight))
+
+                if not unique_terms:
                     skipped += 1
                     continue
 
-                terms = [(term, 1.0) for term in unique_synonyms]
-                self._upsert_group(domain, canonical, terms, enabled=1)
+                # 为每组创建 savepoint：单组失败只回滚该组，不影响整批
+                with self.db.begin_nested():
+                    self._upsert_group_tx(domain, canonical, unique_terms, enabled=1)
                 count += 1
+
+                if count % commit_every == 0:
+                    self.db.commit()
 
             except Exception as e:
                 errors += 1
+                # begin_nested 失败会自动回滚到 savepoint；这里确保 session 可继续使用
+                self.db.rollback()
                 logger.warning(f"导入第 {idx} 组时出错: {e}", exc_info=logger.isEnabledFor(logging.DEBUG))
                 # 继续处理下一组，不中断整个导入流程
+
+        # 提交尾批
+        try:
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
 
         logger.info(f"批量导入完成: domain={domain}, 成功={count}, 跳过={skipped}, 错误={errors}")
         return count
@@ -402,15 +492,10 @@ class SynonymService:
             return count > 0
         return False
 
-
-class ReviewService:
-    """候选审核服务。"""
-
-    def __init__(self, db: Session):
-        self.db = db
+    # ========== 候选审核方法 ==========
 
     def list_candidates(self, domain: str, status: str, limit: int = 100, offset: int = 0) -> Tuple[List[SynonymCandidate], int]:
-        """按状态列出候选。"""
+        """按状态列出候选（分页查询）。"""
         query = self.db.query(SynonymCandidate).filter(
             and_(SynonymCandidate.domain == domain, SynonymCandidate.status == status)
         )
@@ -420,7 +505,7 @@ class ReviewService:
 
         return (candidates, total)
 
-    def approve(self, candidate_ids: List[int]) -> int:
+    def approve_candidates(self, candidate_ids: List[int]) -> int:
         """审核通过候选，并写入 synonym_group/synonym_term（带事务回滚）。"""
         try:
             candidates = (
@@ -443,7 +528,6 @@ class ReviewService:
 
             # 批量写入同义词组
             approved_count = 0
-            service = SynonymService(self.db)
             for (domain, canonical), synonym_list in groups_map.items():
                 terms = []
                 for synonym, score in synonym_list:
@@ -451,7 +535,7 @@ class ReviewService:
                     weight = 0.5 + (score * 0.5)
                     terms.append((synonym, weight))
 
-                service._upsert_group(domain, canonical, terms, enabled=1)
+                self._upsert_group(domain, canonical, terms, enabled=1)
                 approved_count += len(synonym_list)
 
             # 更新候选状态
@@ -467,7 +551,7 @@ class ReviewService:
             logger.error(f"审核通过候选失败: candidate_ids={candidate_ids}, error={e}", exc_info=True)
             raise
 
-    def reject(self, candidate_ids: List[int]) -> int:
+    def reject_candidates(self, candidate_ids: List[int]) -> int:
         """拒绝候选（带事务回滚）。"""
         try:
             count = (
@@ -500,4 +584,15 @@ def init_synonyms_on_startup(db: Session, domain: str = "default"):
         return False
 
 
+class ReviewService:
+    """候选审核服务（向后兼容 tests/README 中的 ReviewService 引用）。"""
 
+    def __init__(self, db: Session):
+        self.db = db
+        self._service = SynonymService(db)
+
+    def approve(self, candidate_ids: List[int]) -> int:
+        return self._service.approve_candidates(candidate_ids)
+
+    def reject(self, candidate_ids: List[int]) -> int:
+        return self._service.reject_candidates(candidate_ids)

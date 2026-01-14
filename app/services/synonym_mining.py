@@ -7,11 +7,12 @@ from typing import List, Optional, Tuple, Dict
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from collections import defaultdict
+from typing import List, Optional, Tuple, Dict
 
-from sqlalchemy import func
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.models.synonym import SynonymCandidate
+from app.models.synonym import SynonymCandidate, SynonymGroup, SynonymTerm
 from app.models.stats import SearchLog
 from app.services.synonym_service import SynonymService
 
@@ -444,6 +445,38 @@ class MiningJobScheduler:
         self.synonym_service = SynonymService(db)
         self.search_log_miner = SearchLogMiner(db)
 
+    def _is_synonym_existing(self, domain: str, synonym: str) -> bool:
+        """检查同义词是否已存在于同义词组中。"""
+        # 检查是否作为 canonical 存在
+        group = (
+            self.db.query(SynonymGroup)
+            .filter(
+                and_(
+                    SynonymGroup.domain == domain,
+                    SynonymGroup.enabled == 1,
+                    SynonymGroup.canonical == synonym,
+                )
+            )
+            .first()
+        )
+        if group:
+            return True
+
+        # 检查是否作为 term 存在
+        term_obj = (
+            self.db.query(SynonymTerm)
+            .join(SynonymGroup)
+            .filter(
+                and_(
+                    SynonymGroup.domain == domain,
+                    SynonymGroup.enabled == 1,
+                    SynonymTerm.term == synonym,
+                )
+            )
+            .first()
+        )
+        return term_obj is not None
+
     def run_mining(
         self,
         domain: str = "default",
@@ -473,15 +506,17 @@ class MiningJobScheduler:
 
         # 1. Embedding 挖掘（如果启用）
         if use_embedding and self.strategy:
-            # 直接查询数据库获取模型对象
-            from app.models.synonym import SynonymGroup
+            # 获取启用状态的 canonical 作为种子词
             groups = (
                 self.db.query(SynonymGroup)
-                .filter(SynonymGroup.domain == domain)
+                .filter(
+                    SynonymGroup.domain == domain,
+                    SynonymGroup.enabled == 1,
+                )
                 .order_by(SynonymGroup.created_at.desc())
                 .all()
             )
-            seed_terms = [g.canonical for g in groups if g.enabled == 1]
+            seed_terms = [g.canonical for g in groups]
 
             if seed_terms:
                 logger.info(f"开始 Embedding 挖掘: domain={domain}, seed_count={len(seed_terms)}")
@@ -518,52 +553,22 @@ class MiningJobScheduler:
         seen_pairs = set()
 
         for canonical, synonym, score, source in all_candidates:
-            # 检查是否已存在（同 domain/canonical/synonym）
+            # 检查是否已在候选表中存在
             existing = (
                 self.db.query(SynonymCandidate)
                 .filter(
-                    and_(
-                        SynonymCandidate.domain == domain,
-                        SynonymCandidate.canonical == canonical,
-                        SynonymCandidate.synonym == synonym,
-                    )
+                    SynonymCandidate.domain == domain,
+                    SynonymCandidate.canonical == canonical,
+                    SynonymCandidate.synonym == synonym,
                 )
                 .first()
             )
             if existing:
                 continue
 
-            # 检查是否已在同义词组中存在（直接查询数据库）
-            from app.models.synonym import SynonymGroup, SynonymTerm
-            from sqlalchemy import and_
-            group = (
-                self.db.query(SynonymGroup)
-                .filter(
-                    and_(
-                        SynonymGroup.domain == domain,
-                        SynonymGroup.enabled == 1,
-                        SynonymGroup.canonical == synonym,
-                    )
-                )
-                .first()
-            )
-            if not group:
-                term_obj = (
-                    self.db.query(SynonymTerm)
-                    .join(SynonymGroup)
-                    .filter(
-                        and_(
-                            SynonymGroup.domain == domain,
-                            SynonymGroup.enabled == 1,
-                            SynonymTerm.term == synonym,
-                        )
-                    )
-                    .first()
-                )
-                if term_obj:
-                    continue  # 已存在，跳过
-            else:
-                continue  # 已存在，跳过
+            # 检查是否已在同义词组中存在
+            if self._is_synonym_existing(domain, synonym):
+                continue
 
             # 去重：相同词对只保留一次（保留分数最高的）
             pair_key = (canonical, synonym)

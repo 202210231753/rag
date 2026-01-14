@@ -23,10 +23,18 @@ SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{USER}:{PASSWORD}@{SERVER}:{PORT}/{D
 # 4. 创建数据库引擎 (Engine)
 # pool_recycle=3600: MySQL 默认会断开空闲 8 小时的连接，这里设置每 1 小时回收重连，防止报错
 # pool_pre_ping=True: 每次从池子里拿连接前，先 ping 一下数据库，确保连接是活的
+# connect_args: 设置连接超时，避免启动时长时间等待
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     pool_recycle=3600,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    connect_args={
+        "connect_timeout": 5,  # 连接超时5秒
+        "read_timeout": 10,    # 读取超时10秒
+        "write_timeout": 10,   # 写入超时10秒
+    }
 )
 
 # 5. ✅ 定义 SessionLocal (这就是你报错缺少的那个对象)

@@ -43,24 +43,6 @@ uvicorn app.main:app --reload --port 8888
 - **同义词挖掘**：从搜索日志和文档中自动发现同义词
 - **领域隔离**：支持多领域同义词库
 
-## 文档
-
-- **[功能说明](docs/功能说明.md)** - 完整的功能说明文档
-- **[测试与演示](docs/测试与演示.md)** - 测试和演示指南
-
-## 快速演示
-
-```bash
-# 确保后端已启动
-uvicorn app.main:app --reload --port 8888
-
-# 运行演示脚本
-python demo_synonym.py
-
-# 查询已存储的同义词
-python query_synonyms.py
-```
-
 ## API接口
 
 ### 同义词管理
@@ -87,30 +69,22 @@ python query_synonyms.py
 
 ```
 rag/
-├── app/                    # 应用代码
-│   ├── api/v1/endpoints/  # API路由
-│   │   ├── synonym.py     # 同义词管理接口
+├── app/                        # 应用代码
+│   ├── api/v1/endpoints/      # API 路由
+│   │   ├── synonym.py         # 同义词管理 + 查询改写接口
 │   │   └── synonym_mining.py  # 同义词挖掘接口
-│   ├── models/            # 数据模型（数据库层）
-│   │   ├── synonym.py     # 同义词数据模型（ORM）
-│   │   └── synonym.sql    # 同义词表结构（SQL）
-│   ├── services/          # 业务逻辑层
-│   │   ├── synonym_service.py  # 同义词业务逻辑（数据访问、查询改写、初始化）
-│   │   └── synonym_mining.py   # 同义词挖掘逻辑
-│   └── schemas/           # 数据模式
+│   ├── models/                # 数据模型（数据库层，SQLAlchemy）
+│   │   └── synonym.py         # SynonymGroup / SynonymTerm / SynonymCandidate
+│   ├── services/              # 业务逻辑层
+│   │   ├── synonym_service.py # 同义词业务逻辑（增删改查、批量导入、改写）
+│   │   └── synonym_mining.py  # 挖掘任务与策略
+│   └── schemas/               # Pydantic 数据模型
 │       └── synonym_schema.py
-├── docs/                   # 文档
-│   ├── 功能说明.md         # 功能说明文档
-│   └── 测试与演示.md       # 测试和演示文档
-├── tests/                  # 测试用例
-│   └── test_synonym.py    # 同义词功能测试
-├── migrations/            # 数据库迁移（历史备份）
-│   └── create_synonym_tables.sql
-├── scripts/                # 工具脚本
-│   └── init_synonyms.py   # 初始化脚本
-├── demo_synonym.py         # 演示脚本
-├── query_synonyms.py       # 查询脚本
-└── requirements.txt        # 依赖列表
+├── app/services/README.md     # 同义词模块内部结构说明
+├── migrations/                # 同义词相关建表脚本（历史备份）
+├── README_同义词数据获取.md   # 同义词数据源与导入说明
+├── requirements.txt           # 依赖列表
+└── docker-compose.yml         # 启动 MySQL 等依赖服务
 ```
 
 ## 运行测试

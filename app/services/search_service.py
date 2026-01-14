@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 
 from sqlalchemy.orm import Session
 
 from app.core.elasticsearch_client import get_elasticsearch_client
 from app.services.synonym_service import SynonymService
-from app.services.es_query_builder import ESQueryBuilder
 from app.schemas.synonym_schema import RewritePlan
 
 logger = logging.getLogger(__name__)
@@ -17,11 +16,74 @@ logger = logging.getLogger(__name__)
 class SearchService:
     """检索服务（集成同义词扩展）。"""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, original_boost: float = 1.0, synonym_boost: float = 0.6):
+        """
+        Args:
+            db: 数据库会话
+            original_boost: 原查询的 boost 值
+            synonym_boost: 同义词扩展的 boost 值（应 < original_boost）
+        """
         self.db = db
         self.es_client = get_elasticsearch_client()
         self.synonym_service = SynonymService(db)
-        self.query_builder = ESQueryBuilder(original_boost=1.0, synonym_boost=0.6)
+        self.original_boost = original_boost
+        self.synonym_boost = synonym_boost
+
+    def _build_es_query(self, rewrite_plan: RewritePlan, field: str = "content") -> Dict[str, Any]:
+        """
+        构建 ES bool 查询（原查询 must，同义词 should）。
+        
+        Args:
+            rewrite_plan: 改写计划
+            field: 查询字段名
+        
+        Returns:
+            ES 查询 DSL
+        """
+        original_query = rewrite_plan.original_query
+        expanded_terms = rewrite_plan.expanded_terms
+
+        # 构建 must 子句（原查询）
+        must_clauses = [
+            {
+                "match": {
+                    field: {
+                        "query": original_query,
+                        "boost": self.original_boost,
+                    }
+                }
+            }
+        ]
+
+        # 构建 should 子句（同义词扩展）
+        should_clauses = []
+        if expanded_terms:
+            for term in expanded_terms:
+                should_clauses.append(
+                    {
+                        "match": {
+                            field: {
+                                "query": term,
+                                "boost": self.synonym_boost,
+                            }
+                        }
+                    }
+                )
+
+        # 组装 bool 查询
+        bool_query: Dict[str, Any] = {
+            "bool": {
+                "must": must_clauses,
+            }
+        }
+
+        if should_clauses:
+            bool_query["bool"]["should"] = should_clauses
+            bool_query["bool"]["minimum_should_match"] = 0  # should 是可选的
+
+        query_dsl = {"query": bool_query}
+        logger.debug(f"ES 查询构造: original={original_query}, expanded={expanded_terms}")
+        return query_dsl
 
     def search(
         self,
@@ -50,7 +112,7 @@ class SearchService:
         rewrite_plan = self.synonym_service.rewrite(domain, query)
 
         # 2. 构建 ES 查询
-        query_dsl = self.query_builder.build_query(rewrite_plan, field=field)
+        query_dsl = self._build_es_query(rewrite_plan, field=field)
         query_dsl["size"] = size
 
         # 3. 执行 ES 查询
@@ -111,12 +173,6 @@ class SearchService:
             except Exception as e2:
                 logger.error(f"降级检索也失败: {e2}", exc_info=True)
                 raise
-
-
-
-
-
-
 
 
 
