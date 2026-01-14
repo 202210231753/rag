@@ -1,0 +1,16 @@
+{
+  "bucket_info": {
+    "bucket-name-1": ["ak", "sk", "endpoint"],
+    "bucket-name-2": ["ak", "sk", "endpoint"]
+  },
+  "models-dir": "/home/yl/yl/zsl/rag/mineru_models/models",
+  "device-mode": "cuda",
+  "layout-config": {
+    "model": "layoutlmv3"
+  },
+  "formula-config": {
+    "mfd_model_dir": "/home/yl/yl/zsl/rag/mineru_models/models/MFD",
+    "mfr_model_dir": "/home/yl/yl/zsl/rag/mineru_models/models/MFR",
+    "layout_model_dir": "/home/yl/yl/zsl/rag/mineru_models/models/Layout"
+  }
+}
