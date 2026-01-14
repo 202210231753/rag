@@ -135,5 +135,32 @@ class RagService:
         finally:
             db.close()
 
+    def update_doc_permission(self, document_id: int, visibility: str, group_ids: list[int] | None = None) -> None:
+        """
+        更新文档的可见性/用户组权限配置（当前仅更新 MySQL，Milvus 元数据同步暂未实现）。
+        """
+        db = SessionLocal()
+        try:
+            doc = db.query(Document).filter(Document.id == document_id).first()
+            if not doc:
+                raise ValueError(f"Document {document_id} not found")
+
+            doc.visibility = visibility
+            doc.authorized_group_ids = group_ids
+            db.commit()
+
+            logger.info(
+                "Updated permission for document %s: visibility=%s groups=%s",
+                document_id,
+                visibility,
+                group_ids,
+            )
+        except Exception as exc:
+            db.rollback()
+            logger.error("Error updating permission for doc %s: %s", document_id, exc)
+            raise
+        finally:
+            db.close()
+
 
 rag_service = RagService()
