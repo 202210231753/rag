@@ -13,6 +13,9 @@ from app.api.v1.endpoints import (
     viewer,
 )
 
+from app.intervention.routers import censor as intervention_censor
+from app.intervention.routers import whitelist as intervention_whitelist
+
 api_router = APIRouter()
 
 # 知识库/文件/摄入/干预
@@ -27,3 +30,11 @@ api_router.include_router(tokenizer.router, prefix="/tokenizer", tags=["中文�
 api_router.include_router(term_weight.router, prefix="/term-weight", tags=["词权重模块"])
 api_router.include_router(search.router, prefix="/search", tags=["多路召回搜索"])
 api_router.include_router(ranking.router, prefix="/ranking", tags=["排序引擎管理"])
+
+# 细分干预子模块（白名单 / 敏感词）
+api_router.include_router(
+    intervention_whitelist.router, prefix="/intervention/whitelist", tags=["干预-白名单"]
+)
+api_router.include_router(
+    intervention_censor.router, prefix="/intervention/censor", tags=["干预-敏感词"]
+)

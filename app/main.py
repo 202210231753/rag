@@ -1,7 +1,10 @@
 # 【入口】整个程序的启动点
+from __future__ import annotations
+
 from fastapi import FastAPI
 from loguru import logger
 import sys
+from fastapi.openapi.docs import get_redoc_html
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -50,7 +53,8 @@ app = FastAPI(
     description="基于向量检索 + 关键词检索的多路召回系统，使用 RRF 融合算法",
     version="2.0.0",
     docs_url="/docs",
-    redoc_url="/redoc",
+    # 默认 ReDoc 可能引用外部资源导致部分网络环境下空白；这里关闭内置 redoc_url，改用自定义路由。
+    redoc_url=None,
 )
 
 # 注册所有路由，统一加前缀 /api/v1
@@ -77,6 +81,15 @@ async def shutdown_event():
     
     # 关闭 Redis 连接
     await redis_client.close()
+
+
+@app.get("/redoc", include_in_schema=False)
+def redoc() -> object:
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} - ReDoc",
+        redoc_js_url="https://unpkg.com/redoc@3.0.0-rc.0/bundles/redoc.standalone.js",
+    )
 
 
 @app.get("/")
