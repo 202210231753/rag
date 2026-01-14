@@ -8,3 +8,7 @@ env/
 venv/
 .claude/
 
+# 本地临时目录/文件（不要入库）
+.tmp/
+.spec-workflow/
+compose.yaml.bac
