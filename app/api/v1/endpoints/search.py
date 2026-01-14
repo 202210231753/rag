@@ -11,6 +11,8 @@ from app.schemas.search_schema import SearchRequest
 from app.rag.models.search_result import SearchResult
 from app.rag.search_gateway import SearchGateway
 from app.api.deps import get_search_gateway  # 从 deps 导入
+from app.api.deps import get_hot_search_service
+from app.hot_search.service import HotSearchService
 
 router = APIRouter()
 
@@ -19,6 +21,7 @@ router = APIRouter()
 async def multi_recall_search(
     request: SearchRequest,
     gateway: SearchGateway = Depends(get_search_gateway),
+    hot_search: HotSearchService = Depends(get_hot_search_service),
 ):
     """
     多路召回搜索
@@ -43,7 +46,7 @@ async def multi_recall_search(
     try:
         logger.info(f"[API] 收到搜索请求: query='{request.query}', top_n={request.top_n}")
 
-        # 调用 SearchGateway 执行搜索
+        # 调用 SearchGateway 执行搜索（成功返回即视为“检索成功”）
         result = await gateway.search(
             query=request.query,
             top_n=request.top_n,
@@ -51,6 +54,12 @@ async def multi_recall_search(
             enable_rerank=request.enable_rerank,
             enable_ranking=request.enable_ranking,
         )
+
+        # 热搜计数：仅在检索成功(HTTP 200)后记录；即便 total=0 也计数
+        try:
+            await hot_search.record_search_action(request.query)
+        except Exception as exc:
+            logger.warning(f"[HotSearch] 记录热度失败（不影响搜索返回）: {exc}")
 
         logger.info(
             f"[API] 搜索成功: results={result.total}, took={result.took_ms:.2f}ms"

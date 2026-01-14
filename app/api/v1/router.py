@@ -1,6 +1,6 @@
 # 路由汇总（把下面两个拼起来）
 from fastapi import APIRouter
-from app.api.v1.endpoints import viewer, chat, tokenizer, term_weight, search, ranking
+from app.api.v1.endpoints import viewer, chat, tokenizer, term_weight, search, ranking, hot_search
 
 api_router = APIRouter()
 
@@ -21,3 +21,6 @@ api_router.include_router(search.router, prefix="/search", tags=["多路召回�
 
 # 挂载排序引擎管理模块 (访问地址: /api/v1/ranking/...)
 api_router.include_router(ranking.router, prefix="/ranking", tags=["排序引擎管理"])
+
+# 挂载热搜服务 (访问地址: /api/v1/hot-search/...)
+api_router.include_router(hot_search.router, prefix="/hot-search", tags=["热搜服务"])
