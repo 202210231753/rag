@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+import os
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -240,6 +241,9 @@ class ABTestService:
         analysis = self._build_analysis_section(e)
         conclusion = self._build_conclusion_section(e)
 
+        # 使用大模型生成一份“终版实验报告”（可选）
+        llm_final = _call_llm_final_report(experiment_id, design, execution, analysis, conclusion)
+
         rep = {
             "experimentId": experiment_id,
             "designAndHypothesis": design,
@@ -247,23 +251,29 @@ class ABTestService:
             "analysisAndStatistics": analysis,
             "conclusionsAndRecommendations": conclusion,
         }
+        if llm_final:
+            rep["llmFinalReport"] = llm_final
         reports[experiment_id] = rep
         return rep
 
     def get_report(self, experiment_id: str) -> Optional[Dict]:
         if self.db is not None:
-            rep = self.db.execute(
+            rep_row = self.db.execute(
                 select(ABTestReport).where(ABTestReport.experiment_id == experiment_id)
             ).scalar_one_or_none()
-            if not rep:
+            if not rep_row:
                 return None
-            return {
-                "experimentId": rep.experiment_id,
-                "designAndHypothesis": rep.design_and_hypothesis,
-                "executionAndKeyData": rep.execution_and_key_data,
-                "analysisAndStatistics": rep.analysis_and_statistics,
-                "conclusionsAndRecommendations": rep.conclusions_and_recommendations,
+            base = {
+                "experimentId": rep_row.experiment_id,
+                "designAndHypothesis": rep_row.design_and_hypothesis,
+                "executionAndKeyData": rep_row.execution_and_key_data,
+                "analysisAndStatistics": rep_row.analysis_and_statistics,
+                "conclusionsAndRecommendations": rep_row.conclusions_and_recommendations,
             }
+            # 若存在持久化的 LLM 终版报告，则一并返回，供前端直接展示
+            if getattr(rep_row, "llm_final_report", None):
+                base["llmFinalReport"] = rep_row.llm_final_report
+            return base
         return reports.get(experiment_id)
 
     # ----------------- DB implementations -----------------
@@ -580,6 +590,10 @@ class ABTestService:
         analysis = self._build_analysis_section_db(temp)
         conclusion = self._build_conclusion_section_db(temp)
 
+        # 先尝试调用大模型生成终版结论；若失败则回退到规则版结论
+        llm_final = _call_llm_final_report(experiment_id, design, execution, analysis, conclusion)
+        conclusion_to_save = llm_final or conclusion
+
         rep = self.db.execute(
             select(ABTestReport).where(ABTestReport.experiment_id == experiment_id)
         ).scalar_one_or_none()
@@ -590,23 +604,28 @@ class ABTestService:
                 design_and_hypothesis=design,
                 execution_and_key_data=execution,
                 analysis_and_statistics=analysis,
-                conclusions_and_recommendations=conclusion,
+                conclusions_and_recommendations=conclusion_to_save,
+                llm_final_report=llm_final,
             )
             self.db.add(rep)
         else:
             rep.design_and_hypothesis = design
             rep.execution_and_key_data = execution
             rep.analysis_and_statistics = analysis
-            rep.conclusions_and_recommendations = conclusion
+            rep.conclusions_and_recommendations = conclusion_to_save
+            rep.llm_final_report = llm_final
 
         self.db.commit()
-        return {
+        out = {
             "experimentId": experiment_id,
             "designAndHypothesis": design,
             "executionAndKeyData": execution,
             "analysisAndStatistics": analysis,
-            "conclusionsAndRecommendations": conclusion,
+            "conclusionsAndRecommendations": conclusion_to_save,
         }
+        if llm_final:
+            out["llmFinalReport"] = llm_final
+        return out
 
     def _build_execution_section_db(self, e: Experiment) -> str:
         assert self.db is not None
@@ -799,6 +818,94 @@ class ABTestService:
             f"- 目前未观察到版本 {b} 相对 {a} 的稳定显著提升，建议继续采样或调整实验设计。\n"
             "- 可考虑按分流变量做分层分析，避免总体被人群结构稀释。\n"
         )
+
+
+def _call_llm_final_report(
+    experiment_id: str,
+    design: str,
+    execution: str,
+    analysis: str,
+    conclusion: str,
+) -> Optional[str]:
+    """调用 Qwen3-4B 生成终版实验报告（快速失败，不阻塞主链路）。
+
+    - 默认走本地 vLLM OpenAI 兼容服务：http://127.0.0.1:8000/v1
+    - 可通过环境变量覆盖：
+        - QWEN_API_BASE (默认 http://127.0.0.1:8000/v1)
+        - QWEN_API_MODEL (默认 Qwen3-4B-Instruct-2507)
+        - QWEN_API_KEY  (可选，若 vLLM 开启了鉴权)
+        - QWEN_TIMEOUT_SECONDS (默认 3 秒，用于 requests 超时)
+
+    出错或超时时返回 None，不影响主流程。
+    """
+
+    import json
+
+    base = os.getenv("QWEN_API_BASE", "http://127.0.0.1:8000/v1").rstrip("/")
+    model = os.getenv("QWEN_API_MODEL", "Qwen3-4B-Instruct-2507")
+    api_key = os.getenv("QWEN_API_KEY", "")
+    try:
+        timeout_sec = float(os.getenv("QWEN_TIMEOUT_SECONDS", "30"))
+    except ValueError:
+        timeout_sec = 3.0
+
+    url = f"{base}/chat/completions"
+
+    system_prompt = "你是一名经验丰富的互联网 A/B 实验分析专家，擅长为业务方撰写简洁专业的中文实验报告。"
+
+    user_prompt = f"""请根据下面这份 A/B 实验的原始报告草稿，为业务方生成一份结构化的终版实验总结报告（中文）：
+
+[实验设计与假设]
+{design}
+
+[实验执行与关键数据]
+{execution}
+
+[结果分析与统计]
+{analysis}
+
+[原始结论与建议]
+{conclusion}
+
+要求：
+1. 按“实验背景与目标 / 实验配置 / 关键结果 / 风险与限制 / 结论与上线建议”这五个小节组织内容；
+2. 用通俗的业务语言解释 uplift、p 值等统计结果的含义，不需要给出公式；
+3. 明确说明当前是否建议扩大流量或全量上线，并给出下一步行动建议；
+4. 不要逐字照抄原始草稿，而是做归纳和润色；
+5. 只输出终版报告正文，无需再次分段复述输入内容。"""
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.2,
+        "max_tokens": 1024,
+    }
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    try:
+        import requests  # 局部导入，避免在极简环境下强依赖
+
+        # 使用较短超时时间，避免在 Qwen 未启动时阻塞 /reports 接口过久
+        resp = requests.post(url, data=json.dumps(payload), headers=headers, timeout=timeout_sec)
+        resp.raise_for_status()
+        data = resp.json()
+        choices = data.get("choices") or []
+        if not choices:
+            return None
+        msg = choices[0].get("message") or {}
+        content = msg.get("content")
+        if not isinstance(content, str):
+            return None
+        return content.strip()
+    except Exception:
+        # 出错时静默失败，让接口依然返回规则版报告
+        return None
 
 
 import math  # 放在底部避免打断主体逻辑

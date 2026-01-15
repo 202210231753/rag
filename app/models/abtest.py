@@ -90,6 +90,8 @@ class ABTestReport(Base):
     execution_and_key_data: Mapped[str] = mapped_column(Text)
     analysis_and_statistics: Mapped[str] = mapped_column(Text)
     conclusions_and_recommendations: Mapped[str] = mapped_column(Text)
+    # 可选：大模型生成的终版实验报告全文
+    llm_final_report: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
