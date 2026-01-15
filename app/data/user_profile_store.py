@@ -1,8 +1,8 @@
 from typing import Dict, List
 from sqlalchemy.orm import Session
-from chatbot.rag.app.data.models import UserProfile
-from chatbot.rag.app.data.sql_models import RagUserTraits, UserProfileOld
-from chatbot.rag.app.core.database import SessionLocal, engine, Base
+from app.core.database import Base, SessionLocal, engine
+from app.data.models import UserProfile
+from app.data.sql_models import RagUserTraits, UserProfileOld
 
 class UserProfileStore:
     def __init__(self):

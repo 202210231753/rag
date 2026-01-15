@@ -1,5 +1,5 @@
 from typing import Dict, List
-from chatbot.rag.app.data.models import FeedbackAction
+from app.data.models import FeedbackAction
 
 class FeedbackService:
     def __init__(self):

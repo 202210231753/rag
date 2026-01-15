@@ -5,12 +5,12 @@ from transformers import AutoModel, AutoTokenizer
 
 # Add project root to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from chatbot.rag.app.infra.vector_db import VectorDBClient
-from chatbot.rag.app.data.models import Item
+from app.data.models import Item
+from app.infra.vector_db import VectorDBClient
 
 # Embedding Model Path (Same as in AIModelClient)
 EMB_MODEL_PATH = "/home/yl/yl/yl/code-llm/Qwen/Qwen3-Embedding-0.6B"
@@ -83,4 +83,3 @@ def init_milvus_data():
 
 if __name__ == "__main__":
     init_milvus_data()
-

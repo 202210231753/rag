@@ -3,11 +3,11 @@ import os
 
 # Add project root to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from chatbot.rag.app.infra.vector_db import VectorDBClient
+from app.infra.vector_db import VectorDBClient
 
 print("=== Debugging Milvus Initialization ===")
 print("Attempting to initialize VectorDBClient (this will connect and ensure collection)...")
@@ -27,4 +27,3 @@ except Exception as e:
     traceback.print_exc()
 
 print("=== Debugging Complete ===")
-

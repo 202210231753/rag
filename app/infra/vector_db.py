@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
 from pymilvus import connections, Collection, FieldSchema, CollectionSchema, DataType, utility
-from chatbot.rag.app.data.models import Item
+from app.data.models import Item
 import random
 import os
 from dotenv import load_dotenv

@@ -1,21 +1,20 @@
 import sys
 import os
 
-# 将项目根目录添加到路径（确保我们可以导入 'chatbot' 包）
+# 将项目根目录添加到路径（确保我们可以导入 'app' 包）
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from chatbot.rag.app.data.user_profile_store import UserProfileStore
-from chatbot.rag.app.infra.config import ConfigCenter
-from chatbot.rag.app.infra.ai_client import AIModelClient
-from chatbot.rag.app.infra.vector_db import VectorDBClient
-from chatbot.rag.app.core.user_profile_manager import UserProfileManager
-from chatbot.rag.app.core.ranking_engine import RankingEngine
-from chatbot.rag.app.services.recommender_service import ContentRecommenderService
-from chatbot.rag.app.services.recommender_service import QueryRecommenderService
-from chatbot.rag.app.services.feedback_service import FeedbackService
+from app.core.ranking_engine import RankingEngine
+from app.core.user_profile_manager import UserProfileManager
+from app.data.user_profile_store import UserProfileStore
+from app.infra.ai_client import AIModelClient
+from app.infra.config import ConfigCenter
+from app.infra.vector_db import VectorDBClient
+from app.services.feedback_service import FeedbackService
+from app.services.recommender_service import ContentRecommenderService, QueryRecommenderService
 
 def main():
     print("=== 初始化 RAG 系统 (真实数据库模式) ===")

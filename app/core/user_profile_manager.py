@@ -1,10 +1,10 @@
 from typing import List, BinaryIO
 import csv
 import io
-from chatbot.rag.app.data.models import UserProfile
-from chatbot.rag.app.data.user_profile_store import UserProfileStore
-from chatbot.rag.app.infra.ai_client import AIModelClient
-from chatbot.rag.app.infra.vector_db import VectorDBClient
+from app.data.models import UserProfile
+from app.data.user_profile_store import UserProfileStore
+from app.infra.ai_client import AIModelClient
+from app.infra.vector_db import VectorDBClient
 
 class UserProfileManager:
     def __init__(self, store: UserProfileStore, ai_client: AIModelClient, vector_db: VectorDBClient):

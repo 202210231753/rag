@@ -1,6 +1,6 @@
 from typing import List, Set
 import math
-from chatbot.rag.app.data.models import Item, UserProfile, ExplanationItem
+from app.data.models import ExplanationItem, Item, UserProfile
 
 class RankingEngine:
     def apply_hard_filters(self, candidates: List[Item], profile: UserProfile) -> List[Item]:

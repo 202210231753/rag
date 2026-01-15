@@ -4,12 +4,12 @@ import json
 
 # 添加项目根目录到路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from chatbot.rag.app.core.database import SessionLocal, engine, Base
-from chatbot.rag.app.data.sql_models import UserProfileOld, RagUserTraits
+from app.core.database import Base, SessionLocal, engine
+from app.data.sql_models import RagUserTraits, UserProfileOld
 
 # 确保表存在
 Base.metadata.create_all(bind=engine)
@@ -125,7 +125,6 @@ def seed_data():
 
 if __name__ == "__main__":
     seed_data()
-
 
 
 

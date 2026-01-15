@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, JSON, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from chatbot.rag.app.core.database import Base
+from app.core.database import Base
 
 # 1. 映射旧表 (只读用，或者用于外键关联)
 class UserProfileOld(Base):

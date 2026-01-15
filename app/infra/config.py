@@ -1,5 +1,5 @@
 from typing import List, Dict
-from chatbot.rag.app.data.models import ExperimentParams
+from app.data.models import ExperimentParams
 
 class ConfigCenter:
     _instance = None
