@@ -10,6 +10,8 @@ from app.api.v1.endpoints import (
     ranking,
     search,
     suggest,
+    synonym,
+    synonym_mining,
     term_weight,
     tokenizer,
     viewer,

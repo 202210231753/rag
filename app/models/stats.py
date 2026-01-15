@@ -46,3 +46,6 @@ class SearchLog(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False, index=True)
     timestamp = Column(DateTime, nullable=False, index=True)
+    query = Column(String(500), nullable=True, index=True, comment="搜索查询词")
+    clicked_doc_id = Column(String(255), nullable=True, index=True, comment="点击的文档ID")
+    clicked_doc_title = Column(String(500), nullable=True, comment="点击的文档标题")
