@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     term_weight,
     tokenizer,
     viewer,
+    recommender,
 )
 from app.intervention.routers import censor as intervention_censor
 from app.intervention.routers import whitelist as intervention_whitelist
@@ -29,7 +30,6 @@ api_router.include_router(files.router, prefix="/files", tags=["文件代理模�
 
 # 原有模块
 api_router.include_router(viewer.router, prefix="/viewer", tags=["数据查看模块"])
-
 # 挂载同义词模块 (访问地址: /api/v1/synonyms/...)
 # 包含：同义词管理、查询改写、候选审核
 api_router.include_router(synonym.router, prefix="/synonyms", tags=["同义词模块"])
@@ -55,3 +55,6 @@ api_router.include_router(
 api_router.include_router(
     intervention_censor.router, prefix="/intervention/censor", tags=["干预-敏感词"]
 )
+
+# 挂载智能推荐模块 (访问地址: /api/v1/recommender/...)
+api_router.include_router(recommender.router, prefix="/recommender", tags=["智能推荐模块"])

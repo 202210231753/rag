@@ -186,8 +186,8 @@ async def upload_file(file: UploadFile = File(...)):
 - `app/schemas/document_schema.py`: 文档 Schema（空）
 - `app/schemas/chat_schema.py`: 对话 Schema（空）
 - `app/schemas/__init__.py`: 包标识
-- `app/services/rag_service.py`: RAG 服务（空）
-- `app/services/viewer_service.py`: 查看服务（空）
+- `app/services/rag/rag_service.py`: RAG 服务（空）
+- `app/services/viewer/viewer_service.py`: 查看服务（空）
 - `app/services/__init__.py`: 包标识
 - `app/rag/retrievers.py`: 检索器（空）
 - `app/rag/__init__.py`: 包标识

@@ -55,6 +55,18 @@ include_router(chat.router, prefix="/chat")  # 已注释
 - **响应**: `list` (当前返回测试数据 `["test1", "test2"]`)
 - **状态**: 测试实现，待完善
 
+#### 智能推荐模块
+- **基础路径**: `/api/v1/recommender`
+- **标签**: `智能推荐模块`
+- **状态**: ✅ 已实现
+
+已实现端点：
+- `POST /api/v1/recommender/content`: 获取个性化内容推荐
+- `POST /api/v1/recommender/query`: 获取相关查询推荐
+- `GET /api/v1/recommender/health`: 推荐服务健康检查
+
+详细使用文档：[RECOMMENDER_API_GUIDE.md](./RECOMMENDER_API_GUIDE.md)
+
 ### 规划中的 API 端点
 
 #### RAG 对话模块（已注释）
@@ -108,10 +120,12 @@ def get_items(db: Session = Depends(deps.get_db)):
 ```
 api/
 ├── deps.py                    # 依赖注入
+├── RECOMMENDER_API_GUIDE.md   # 推荐 API 使用指南
 ├── v1/
 │   ├── router.py              # 路由汇总
 │   └── endpoints/
 │       ├── viewer.py          # 数据查看端点
+│       ├── recommender.py     # 智能推荐端点 ✅
 │       └── chat.py            # 对话端点（空）
 ```
 
@@ -250,19 +264,41 @@ async def log_requests(request: Request, call_next):
 ## 相关文件清单
 
 ### 已实现文件
-- `/home/yl/yl/wy/rag/rag_project/app/api/deps.py` (10 行)
+- `/home/yl/yl/cms/chatbot/rag/app/api/deps.py` (10 行)
   - `get_db()` 依赖注入函数
 
-- `/home/yl/yl/wy/rag/rag_project/app/api/v1/router.py` (11 行)
+- `/home/yl/yl/cms/chatbot/rag/app/api/v1/router.py` (13 行)
   - API 路由汇总
   - viewer 路由注册
+  - recommender 路由注册 ✅
   - chat 路由注册（已注释）
 
-- `/home/yl/yl/wy/rag/rag_project/app/api/v1/endpoints/viewer.py` (22 行)
+- `/home/yl/yl/cms/chatbot/rag/app/api/v1/endpoints/viewer.py` (22 行)
   - `GET /list` 端点（测试实现）
 
+- `/home/yl/yl/cms/chatbot/rag/app/api/v1/endpoints/recommender.py` (约 200 行) ✅
+  - `POST /content` 内容推荐端点
+  - `POST /query` 查询推荐端点
+  - `GET /health` 健康检查端点
+  - 完整的依赖注入和错误处理
+
+- `/home/yl/yl/cms/chatbot/rag/app/schemas/recommender_schema.py` (约 150 行) ✅
+  - `ContentRecommendRequest/Response` Schema
+  - `QueryRecommendRequest/Response` Schema
+  - `ItemResponse`, `ExplanationItemResponse` Schema
+  - `ErrorResponse` Schema
+
+- `/home/yl/yl/cms/chatbot/rag/app/api/RECOMMENDER_API_GUIDE.md` ✅
+  - 完整的推荐 API 使用文档
+  - Python/JavaScript 调用示例
+  - 集成建议和最佳实践
+
+- `/home/yl/yl/cms/chatbot/rag/test_recommender_api.py` ✅
+  - API 测试脚本
+  - CURL 命令示例
+
 ### 待实现文件
-- `/home/yl/yl/wy/rag/rag_project/app/api/v1/endpoints/chat.py` (空文件)
+- `/home/yl/yl/cms/chatbot/rag/app/api/v1/endpoints/chat.py` (空文件)
   - 文档上传端点
   - 智能问答端点
   - 对话历史端点
@@ -273,6 +309,18 @@ async def log_requests(request: Request, call_next):
 - `app/api/v1/endpoints/__init__.py`
 
 ## 变更记录 (Changelog)
+
+### 2026-01-14
+- ✅ **实现智能推荐模块 API**
+  - 创建 `recommender.py` 端点（内容推荐、查询推荐、健康检查）
+  - 创建 `recommender_schema.py` 定义所有请求/响应 Schema
+  - 在 `router.py` 中注册推荐路由
+  - 创建完整的使用文档 `RECOMMENDER_API_GUIDE.md`
+  - 创建测试脚本 `test_recommender_api.py`
+- 支持的功能：
+  - 个性化内容推荐（基于用户画像、混合检索、多样性优化）
+  - 相关查询推荐（算法匹配 + 热搜 + 精选）
+  - 完整的错误处理和日志追踪（trace_id）
 
 ### 2025-12-18 15:00:06
 - 创建 API 模块文档

@@ -54,3 +54,10 @@ requests
 # 用于“中文分词模块”：可通过接口在 jieba / HanLP 间切换
 jieba>=0.42.1
 hanlp>=2.1.0
+
+
+# --- Model Support (Qwen/HuggingFace) ---
+
+transformers>=4.37.0
+accelerate>=0.27.0
+sentence-transformers>=2.3.0
