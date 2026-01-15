@@ -19,18 +19,33 @@ class RedisClient:
     async def connect(self):
         """建立 Redis 连接"""
         try:
-            self._client = await redis.Redis(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                db=settings.REDIS_DB,
-                password=settings.REDIS_PASSWORD,
-                decode_responses=True,  # 自动解码为字符串
-                socket_connect_timeout=5,
-                socket_keepalive=True,
-            )
+            if settings.REDIS_UNIX_SOCKET:
+                self._client = redis.Redis(
+                    unix_socket_path=settings.REDIS_UNIX_SOCKET,
+                    db=settings.REDIS_DB,
+                    password=settings.REDIS_PASSWORD,
+                    decode_responses=True,  # 自动解码为字符串
+                    socket_connect_timeout=5,
+                    socket_keepalive=True,
+                )
+            else:
+                self._client = redis.Redis(
+                    host=settings.REDIS_HOST,
+                    port=settings.REDIS_PORT,
+                    db=settings.REDIS_DB,
+                    password=settings.REDIS_PASSWORD,
+                    decode_responses=True,  # 自动解码为字符串
+                    socket_connect_timeout=5,
+                    socket_keepalive=True,
+                )
             # 测试连接
             await self._client.ping()
-            logger.info(f"✅ Redis 连接成功: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
+            target = (
+                settings.REDIS_UNIX_SOCKET
+                if settings.REDIS_UNIX_SOCKET
+                else f"{settings.REDIS_HOST}:{settings.REDIS_PORT}"
+            )
+            logger.info(f"✅ Redis 连接成功: {target}")
         except Exception as e:
             logger.error(f"❌ Redis 连接失败: {e}")
             self._client = None

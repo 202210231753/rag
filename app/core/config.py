@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: Optional[str] = None
+    REDIS_UNIX_SOCKET: Optional[str] = None  # 可选：使用 Unix Socket 连接 Redis
+
+    # ========================================
+    # 热搜服务配置
+    # ========================================
+    # 可选：为热搜相关 Redis Key 添加统一前缀，避免与其他项目/环境冲突
+    HOT_SEARCH_KEY_PREFIX: str = ""
 
     # ========================================
     # OpenAI API 配置（可选）

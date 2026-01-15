@@ -14,6 +14,7 @@ from typing import Optional
 class SearchRequest(BaseModel):
     """多路召回搜索请求"""
 
+    user_id: Optional[str] = Field(default=None, description="用户ID（用于历史与输入提示沉淀）")
     query: str = Field(..., min_length=1, description="搜索查询", example="什么是 RAG？")
     top_n: int = Field(default=10, ge=1, le=100, description="返回结果数量")
     recall_top_k: int = Field(
@@ -28,6 +29,7 @@ class SearchRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
+                "user_id": "user_123",
                 "query": "如何使用多路召回提升检索效果？",
                 "top_n": 5,
                 "recall_top_k": 100,

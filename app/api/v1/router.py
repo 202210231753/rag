@@ -3,16 +3,17 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     files,
+    hot_search,
     ingest,
     intervention,
     knowledge,
     ranking,
     search,
+    suggest,
     term_weight,
     tokenizer,
     viewer,
 )
-
 from app.intervention.routers import censor as intervention_censor
 from app.intervention.routers import whitelist as intervention_whitelist
 
@@ -30,6 +31,10 @@ api_router.include_router(tokenizer.router, prefix="/tokenizer", tags=["中文�
 api_router.include_router(term_weight.router, prefix="/term-weight", tags=["词权重模块"])
 api_router.include_router(search.router, prefix="/search", tags=["多路召回搜索"])
 api_router.include_router(ranking.router, prefix="/ranking", tags=["排序引擎管理"])
+api_router.include_router(hot_search.router, prefix="/hot-search", tags=["热搜服务"])
+
+# 输入提示
+api_router.include_router(suggest.router, prefix="/suggest", tags=["输入提示"])
 
 # 细分干预子模块（白名单 / 敏感词）
 api_router.include_router(
