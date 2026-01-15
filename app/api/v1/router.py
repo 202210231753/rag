@@ -1,29 +1,45 @@
-# 路由汇总（把下面两个拼起来）
+# 路由汇总
 from fastapi import APIRouter
-from app.api.v1.endpoints import viewer, chat, tokenizer, term_weight, search, ranking, hot_search, suggest
+
+from app.api.v1.endpoints import (
+    files,
+    hot_search,
+    ingest,
+    intervention,
+    knowledge,
+    ranking,
+    search,
+    suggest,
+    term_weight,
+    tokenizer,
+    viewer,
+)
+from app.intervention.routers import censor as intervention_censor
+from app.intervention.routers import whitelist as intervention_whitelist
 
 api_router = APIRouter()
 
-# 挂载你的模块 (访问地址: /api/v1/viewer/...)
+# 知识库/文件/摄入/干预
+api_router.include_router(knowledge.router, prefix="/knowledge", tags=["知识库管理模块"])
+api_router.include_router(intervention.router, prefix="/intervention", tags=["数据干预模块"])
+api_router.include_router(ingest.router, prefix="/ingest", tags=["数据摄入模块"])
+api_router.include_router(files.router, prefix="/files", tags=["文件代理模块"])
+
+# 原有模块
 api_router.include_router(viewer.router, prefix="/viewer", tags=["数据查看模块"])
-
-# 挂载你的第二个模块：中文分词 (访问地址: /api/v1/tokenizer/...)
 api_router.include_router(tokenizer.router, prefix="/tokenizer", tags=["中文分词模块"])
-
-# 挂载你的第三个模块：词权重 (访问地址: /api/v1/term-weight/...)
 api_router.include_router(term_weight.router, prefix="/term-weight", tags=["词权重模块"])
-
-# 挂载同事的模块 (访问地址: /api/v1/chat/...)
-# api_router.include_router(chat.router, prefix="/chat", tags=["RAG对话模块"])
-
-# 挂载多路召回搜索模块 (访问地址: /api/v1/search/...)
 api_router.include_router(search.router, prefix="/search", tags=["多路召回搜索"])
-
-# 挂载排序引擎管理模块 (访问地址: /api/v1/ranking/...)
 api_router.include_router(ranking.router, prefix="/ranking", tags=["排序引擎管理"])
-
-# 挂载热搜服务 (访问地址: /api/v1/hot-search/...)
 api_router.include_router(hot_search.router, prefix="/hot-search", tags=["热搜服务"])
 
-# 挂载输入提示服务 (访问地址: /api/v1/suggest/...)
+# 输入提示
 api_router.include_router(suggest.router, prefix="/suggest", tags=["输入提示"])
+
+# 细分干预子模块（白名单 / 敏感词）
+api_router.include_router(
+    intervention_whitelist.router, prefix="/intervention/whitelist", tags=["干预-白名单"]
+)
+api_router.include_router(
+    intervention_censor.router, prefix="/intervention/censor", tags=["干预-敏感词"]
+)
