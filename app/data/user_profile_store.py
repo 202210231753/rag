@@ -48,7 +48,7 @@ class UserProfileStore:
 
     def save(self, profile: UserProfile) -> None:
         """
-        保存 RAG 特征到新表 (不修改旧表的基本信息)
+        保存 RAG 特征到新表 (如果不修改旧表的基本信息，则确保旧表存在该用户)
         """
         db: Session = SessionLocal()
         try:
@@ -58,9 +58,16 @@ class UserProfileStore:
                 print(f"[Warning] 无法保存用户 {profile.user_id}: ID 不是数字，无法关联旧表")
                 return
 
-            # 检查旧表是否存在该用户 (严格来说应该检查，但为了性能可跳过，利用外键约束报错)
-            # 这里我们假设用户存在，直接操作新表
+            # 1. 检查并确保旧表(user_profiles)存在该用户
+            # 如果不存在，则创建一个基础记录，以满足外键约束
+            user_exists = db.query(UserProfileOld).filter(UserProfileOld.id == uid_int).first()
+            if not user_exists:
+                print(f"[Info] 用户 {uid_int} 在 user_profiles 中不存在，正在自动创建...")
+                new_user = UserProfileOld(id=uid_int, city=profile.location)
+                db.add(new_user)
+                db.flush() # 立即执行插入，确保后续外键有效
             
+            # 2. 保存/更新 RAG 特征
             traits = db.query(RagUserTraits).filter(RagUserTraits.user_id == uid_int).first()
             if not traits:
                 traits = RagUserTraits(user_id=uid_int)

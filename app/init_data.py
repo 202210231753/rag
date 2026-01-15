@@ -1,6 +1,7 @@
 import sys
 import os
-import random
+import torch
+from transformers import AutoModel, AutoTokenizer
 
 # Add project root to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -11,29 +12,74 @@ if project_root not in sys.path:
 from chatbot.rag.app.infra.vector_db import VectorDBClient
 from chatbot.rag.app.data.models import Item
 
+# Embedding Model Path (Same as in AIModelClient)
+EMB_MODEL_PATH = "/home/yl/yl/yl/code-llm/Qwen/Qwen3-Embedding-0.6B"
+
+def get_real_embedding(text, tokenizer, model, device):
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    with torch.no_grad():
+        outputs = model(**inputs)
+        embeddings = outputs.last_hidden_state.mean(dim=1)
+        embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+    return embeddings[0].tolist()
+
 def init_milvus_data():
-    print("=== Initializing Milvus Data ===")
+    print("=== Initializing Milvus Data with Real Embeddings ===")
     
-    # 1. 模拟一些带向量的数据 (Qwen Embedding 维度通常是 1024 或 1536，这里用 1024 模拟)
-    # 注意：真实场景中应该调用 AIModelClient.get_embedding 来生成向量
-    dim = 1024
-    
-    # 模拟数据
-    mock_items = [
-        Item(item_id="1", content="Advanced Python Guide", tags=["python", "programming"], vector=[random.random() for _ in range(dim)]),
-        Item(item_id="2", content="Machine Learning Basics", tags=["ai", "ml"], vector=[random.random() for _ in range(dim)]),
-        Item(item_id="3", content="Travel to Japan", tags=["travel", "asia"], vector=[random.random() for _ in range(dim)]),
-        Item(item_id="4", content="Healthy Cooking", tags=["food", "health"], vector=[random.random() for _ in range(dim)]),
-        Item(item_id="5", content="Docker Containerization", tags=["devops", "docker"], vector=[random.random() for _ in range(dim)]),
-        Item(item_id="6", content="DeepSeek LLM Tutorial", tags=["ai", "llm", "deepseek"], vector=[random.random() for _ in range(dim)]),
-        Item(item_id="7", content="FastAPI Best Practices", tags=["python", "web"], vector=[random.random() for _ in range(dim)]),
+    # 1. Load Embedding Model
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Loading Embedding Model from: {EMB_MODEL_PATH} (Device: {device})")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(EMB_MODEL_PATH, trust_remote_code=True)
+        model = AutoModel.from_pretrained(EMB_MODEL_PATH, trust_remote_code=True).to(device)
+        print("Model loaded.")
+    except Exception as e:
+        print(f"Failed to load model: {e}")
+        return
+
+    # 2. Define Data
+    # Items for content recommendation (Scene 1)
+    content_items_data = [
+        ("1", "Advanced Python Guide", ["python", "programming"]),
+        ("2", "Machine Learning Basics", ["ai", "ml"]),
+        ("3", "Travel to Japan", ["travel", "asia"]),
+        ("4", "Healthy Cooking", ["food", "health"]),
+        ("5", "Docker Containerization", ["devops", "docker"]),
+        ("6", "DeepSeek LLM Tutorial", ["ai", "llm", "deepseek"]),
+        ("7", "FastAPI Best Practices", ["python", "web"]),
     ]
     
-    client = VectorDBClient()
+    # Items for query recommendation (Scene 2, id starts with query_)
+    query_items_data = [
+        ("query_1", "How to learn Python efficiently?", ["python", "learning"]),
+        ("query_2", "Best travel destinations in Asia", ["travel", "asia"]),
+        ("query_3", "What is RAG in AI?", ["ai", "rag"]),
+        ("query_4", "DeepSeek vs Qwen performance", ["ai", "llm", "benchmark"]),
+    ]
+
+    all_items = []
     
-    # 插入数据
-    client.insert_items(mock_items)
-    print("Done.")
+    print("Generating embeddings...")
+    
+    # Process Content Items
+    for iid, content, tags in content_items_data:
+        vec = get_real_embedding(content, tokenizer, model, device)
+        all_items.append(Item(item_id=iid, content=content, tags=tags, vector=vec))
+        
+    # Process Query Items
+    for iid, content, tags in query_items_data:
+        vec = get_real_embedding(content, tokenizer, model, device)
+        all_items.append(Item(item_id=iid, content=content, tags=tags, vector=vec))
+
+    # 3. Insert into Milvus
+    client = VectorDBClient()
+    # Ensure collection is recreated or cleared if needed. 
+    # For now, we append. In a real init script, we might want to drop_collection first.
+    # But VectorDBClient doesn't expose drop easily, so we just insert.
+    
+    client.insert_items(all_items)
+    print("Done. Data initialized.")
 
 if __name__ == "__main__":
     init_milvus_data()

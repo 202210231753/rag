@@ -22,9 +22,12 @@ class VectorDBClient:
             print(f"Connected to Milvus at {MILVUS_HOST}:{MILVUS_PORT}")
         except Exception as e:
             print(f"Failed to connect to Milvus: {e}")
+            raise e
 
     def _ensure_collection(self):
+        print(f"Checking if collection {self.collection_name} exists...")
         if not utility.has_collection(self.collection_name):
+            print(f"Collection {self.collection_name} does not exist. Creating...")
             fields = [
                 FieldSchema(name="item_id", dtype=DataType.INT64, is_primary=True, auto_id=True),
                 FieldSchema(name="source_id", dtype=DataType.VARCHAR, max_length=100), # 原始ID

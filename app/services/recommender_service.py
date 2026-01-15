@@ -1,10 +1,10 @@
 from typing import List
-from chatbot.rag.app.data.models import Item, ExplanationItem
-from chatbot.rag.app.core.user_profile_manager import UserProfileManager
-from chatbot.rag.app.core.ranking_engine import RankingEngine
-from chatbot.rag.app.infra.config import ConfigCenter
-from chatbot.rag.app.infra.ai_client import AIModelClient
-from chatbot.rag.app.infra.vector_db import VectorDBClient
+from app.data.models import Item, ExplanationItem
+from app.core.user_profile_manager import UserProfileManager
+from app.core.ranking_engine import RankingEngine
+from app.infra.config import ConfigCenter
+from app.infra.ai_client import AIModelClient
+from app.infra.vector_db import VectorDBClient
 
 class ContentRecommenderService:
     def __init__(self, 
