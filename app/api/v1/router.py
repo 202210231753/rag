@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     tokenizer,
     viewer,
     recommender,
+    abtest,
 )
 from app.intervention.routers import censor as intervention_censor
 from app.intervention.routers import whitelist as intervention_whitelist
@@ -58,3 +59,9 @@ api_router.include_router(
 
 # 挂载智能推荐模块 (访问地址: /api/v1/recommender/...)
 api_router.include_router(recommender.router, prefix="/recommender", tags=["智能推荐模块"])
+
+# 挂载 AB 实验模块 (访问地址: /api/v1/abtest/...)
+api_router.include_router(abtest.router, prefix="/abtest", tags=["运营管理-AB实验"])
+
+# 挂载 RAG 对话模块 (访问地址: /api/v1/chat/...)
+api_router.include_router(chat.router, prefix="/chat", tags=["RAG对话模块"])
