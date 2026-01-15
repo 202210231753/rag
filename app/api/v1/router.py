@@ -27,6 +27,16 @@ api_router.include_router(files.router, prefix="/files", tags=["文件代理模�
 
 # 原有模块
 api_router.include_router(viewer.router, prefix="/viewer", tags=["数据查看模块"])
+
+# 挂载同义词模块 (访问地址: /api/v1/synonyms/...)
+# 包含：同义词管理、查询改写、候选审核
+api_router.include_router(synonym.router, prefix="/synonyms", tags=["同义词模块"])
+
+# 挂载挖掘模块 (访问地址: /api/v1/synonyms/mining/...)
+api_router.include_router(synonym_mining.router, prefix="/synonyms/mining", tags=["同义词挖掘模块"])
+
+# 挂载检索模块 (访问地址: /api/v1/search/...)
+# api_router.include_router(search.router, prefix="/search", tags=["检索模块"])  # 暂时注释
 api_router.include_router(tokenizer.router, prefix="/tokenizer", tags=["中文分词模块"])
 api_router.include_router(term_weight.router, prefix="/term-weight", tags=["词权重模块"])
 api_router.include_router(search.router, prefix="/search", tags=["多路召回搜索"])
