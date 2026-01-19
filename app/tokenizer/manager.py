@@ -134,6 +134,6 @@ class TokenizerManager:
         return [t for t in tokens if t and t.strip()]
 
 
-def get_tokenizer_manager(db) -> TokenizerManager:
-    state = SqlAlchemyTokenizerState(db)
+def get_tokenizer_manager(db, scene_id: int = 0) -> TokenizerManager:
+    state = SqlAlchemyTokenizerState(db, scene_id=scene_id)
     return TokenizerManager(state)

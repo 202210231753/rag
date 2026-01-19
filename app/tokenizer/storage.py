@@ -6,7 +6,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Iterable, Set, Tuple
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -72,6 +72,8 @@ class FileBackedTokenizerState:
 _schema_lock = RLock()
 _initialized_binds: Set[int] = set()
 
+DEFAULT_SCENE_ID = 0
+
 
 def ensure_tokenizer_tables(db: Session) -> None:
     """
@@ -87,12 +89,50 @@ def ensure_tokenizer_tables(db: Session) -> None:
         from app.core.database import Base
 
         Base.metadata.create_all(bind=bind, tables=[TokenizerConfig.__table__, TokenizerTerm.__table__])
+        _ensure_scene_id_schema(db)
         _initialized_binds.add(bind_id)
 
 
+def _ensure_scene_id_schema(db: Session) -> None:
+    """
+    将 tokenizer_terms 升级为支持 scene_id：
+    - 增加 scene_id 列（默认0）
+    - 调整唯一约束：UNIQUE(scene_id, term)
+
+    注意：项目未接入 Alembic，这里采用“尽量幂等”的在线升级方式。
+    """
+    bind = db.get_bind()
+    inspector = inspect(bind)
+    if "tokenizer_terms" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("tokenizer_terms")}
+    if "scene_id" not in columns:
+        db.execute(text("ALTER TABLE tokenizer_terms ADD COLUMN scene_id INT NOT NULL DEFAULT 0"))
+        db.execute(text("UPDATE tokenizer_terms SET scene_id = 0 WHERE scene_id IS NULL"))
+        db.commit()
+
+    indexes = {idx["name"]: idx for idx in inspector.get_indexes("tokenizer_terms")}
+
+    if "uq_tokenizer_term" in indexes:
+        try:
+            db.execute(text("ALTER TABLE tokenizer_terms DROP INDEX uq_tokenizer_term"))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    if "uq_tokenizer_term_scene_term" not in indexes:
+        try:
+            db.execute(text("CREATE UNIQUE INDEX uq_tokenizer_term_scene_term ON tokenizer_terms (scene_id, term)"))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+
 class SqlAlchemyTokenizerState:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, scene_id: int = DEFAULT_SCENE_ID) -> None:
         self._db = db
+        self._scene_id = int(scene_id)
         ensure_tokenizer_tables(db)
 
     def load_tokenizer_id(self, default_id: str) -> str:
@@ -117,14 +157,16 @@ class SqlAlchemyTokenizerState:
     def load_terms(self) -> Set[str]:
         from app.models.tokenizer import TokenizerTerm
 
-        rows = self._db.execute(select(TokenizerTerm.term)).all()
+        rows = self._db.execute(
+            select(TokenizerTerm.term).where(TokenizerTerm.scene_id == self._scene_id)
+        ).all()
         return {term for (term,) in rows if term and str(term).strip()}
 
     def add_term(self, term: str) -> bool:
         from app.models.tokenizer import TokenizerTerm
 
         try:
-            self._db.add(TokenizerTerm(term=term))
+            self._db.add(TokenizerTerm(scene_id=self._scene_id, term=term))
             self._db.commit()
             return True
         except IntegrityError:
@@ -134,7 +176,12 @@ class SqlAlchemyTokenizerState:
     def delete_term(self, term: str) -> bool:
         from app.models.tokenizer import TokenizerTerm
 
-        result = self._db.execute(delete(TokenizerTerm).where(TokenizerTerm.term == term))
+        result = self._db.execute(
+            delete(TokenizerTerm).where(
+                TokenizerTerm.scene_id == self._scene_id,
+                TokenizerTerm.term == term,
+            )
+        )
         self._db.commit()
         return (result.rowcount or 0) > 0
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -15,12 +15,13 @@ router = APIRouter()
 @router.post("", response_model=ApiResponse[SuccessResponse])
 def set_term_weight(
     payload: TermWeightSetRequest,
+    scene_id: int = Query(0, ge=0, description="场景ID（默认0）"),
     db: Session = Depends(deps.get_db),
 ) -> ApiResponse[SuccessResponse]:
     """
     人工配置词权重：手动指定特定词条的权重值，用于干预排序。
     """
-    service = TermWeightService(db)
+    service = TermWeightService(db, scene_id=scene_id)
     try:
         service.set_manual_weight(payload.term, payload.weight)
     except ValueError as exc:
@@ -30,12 +31,13 @@ def set_term_weight(
 
 @router.post("/auto", response_model=ApiResponse[SuccessResponse])
 def auto_calc_term_weights(
+    scene_id: int = Query(0, ge=0, description="场景ID（默认0）"),
     db: Session = Depends(deps.get_db),
 ) -> ApiResponse[SuccessResponse]:
     """
     自动计算词权重：基于语料库按 IDF 重新计算词条权重（保留人工权重）。
     """
-    service = TermWeightService(db)
+    service = TermWeightService(db, scene_id=scene_id)
     try:
         service.auto_recalculate_idf_weights()
     except ValueError as exc:

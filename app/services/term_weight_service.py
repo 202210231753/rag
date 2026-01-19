@@ -5,7 +5,7 @@ from math import log10
 from threading import RLock
 from typing import Dict, Iterable, Set, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.models.term_weight import CorpusDocument, TermWeight
@@ -15,6 +15,8 @@ from app.tokenizer.tokenizers import JiebaTokenizer
 
 _schema_lock = RLock()
 _initialized_binds: Set[int] = set()
+
+DEFAULT_SCENE_ID = 0
 
 
 def ensure_term_weight_tables(db: Session) -> None:
@@ -26,7 +28,42 @@ def ensure_term_weight_tables(db: Session) -> None:
         from app.core.database import Base
 
         Base.metadata.create_all(bind=bind, tables=[CorpusDocument.__table__, TermWeight.__table__])
+        _ensure_scene_id_schema(db)
         _initialized_binds.add(bind_id)
+
+
+def _ensure_scene_id_schema(db: Session) -> None:
+    """
+    将 term_weights 升级为支持 scene_id：
+    - 增加 scene_id 列（默认0）
+    - 调整唯一约束：UNIQUE(scene_id, term)
+    """
+    bind = db.get_bind()
+    inspector = inspect(bind)
+    if "term_weights" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("term_weights")}
+    if "scene_id" not in columns:
+        db.execute(text("ALTER TABLE term_weights ADD COLUMN scene_id INT NOT NULL DEFAULT 0"))
+        db.execute(text("UPDATE term_weights SET scene_id = 0 WHERE scene_id IS NULL"))
+        db.commit()
+
+    indexes = {idx["name"]: idx for idx in inspector.get_indexes("term_weights")}
+
+    if "uq_term_weight_term" in indexes:
+        try:
+            db.execute(text("ALTER TABLE term_weights DROP INDEX uq_term_weight_term"))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    if "uq_term_weight_scene_term" not in indexes:
+        try:
+            db.execute(text("CREATE UNIQUE INDEX uq_term_weight_scene_term ON term_weights (scene_id, term)"))
+            db.commit()
+        except Exception:
+            db.rollback()
 
 
 @dataclass(frozen=True)
@@ -37,10 +74,11 @@ class AutoCalcConfig:
 class TermWeightService:
     """词权重服务：人工配置与 IDF 自动计算。"""
 
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, scene_id: int = DEFAULT_SCENE_ID) -> None:
         self._db = db
+        self._scene_id = int(scene_id)
         ensure_term_weight_tables(db)
-        self._tokenizer_manager = get_tokenizer_manager(db)
+        self._tokenizer_manager = get_tokenizer_manager(db, scene_id=self._scene_id)
 
     def set_manual_weight(self, term: str, weight: float) -> None:
         normalized_term = (term or "").strip()
@@ -50,11 +88,15 @@ class TermWeightService:
             raise ValueError("weight 不能小于 0")
 
         existing = self._db.execute(
-            select(TermWeight).where(TermWeight.term == normalized_term)
+            select(TermWeight).where(
+                TermWeight.scene_id == self._scene_id,
+                TermWeight.term == normalized_term,
+            )
         ).scalar_one_or_none()
         if existing is None:
             self._db.add(
                 TermWeight(
+                    scene_id=self._scene_id,
                     term=normalized_term,
                     weight=float(weight),
                     source="MANUAL",
@@ -83,9 +125,16 @@ class TermWeightService:
 
         upserted = 0
         for term, weight in normalized_weights.items():
-            existing = self._db.execute(select(TermWeight).where(TermWeight.term == term)).scalar_one_or_none()
+            existing = self._db.execute(
+                select(TermWeight).where(
+                    TermWeight.scene_id == self._scene_id,
+                    TermWeight.term == term,
+                )
+            ).scalar_one_or_none()
             if existing is None:
-                self._db.add(TermWeight(term=term, weight=weight, source="AUTO"))
+                self._db.add(
+                    TermWeight(scene_id=self._scene_id, term=term, weight=weight, source="AUTO")
+                )
                 upserted += 1
                 continue
 
@@ -179,4 +228,3 @@ _DEFAULT_STOPWORDS: Set[str] = {
     "她们",
     "它们",
 }
-

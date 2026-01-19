@@ -19,9 +19,9 @@ class TokenizerTerm(Base):
     """中文分词专用词条（自定义词库）。"""
 
     __tablename__ = "tokenizer_terms"
-    __table_args__ = (UniqueConstraint("term", name="uq_tokenizer_term"),)
+    __table_args__ = (UniqueConstraint("scene_id", "term", name="uq_tokenizer_term_scene_term"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    scene_id = Column(Integer, nullable=False, server_default="0", comment="场景ID（默认0）")
     term = Column(String(255), nullable=False, comment="词条")
     created_at = Column(DateTime, nullable=False, server_default=func.now())
-
