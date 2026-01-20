@@ -1,10 +1,16 @@
 # 【入口】整个程序的启动点
 from __future__ import annotations
 
-from fastapi import FastAPI
-from loguru import logger
+import logging
 import sys
+
+from fastapi import FastAPI
 from fastapi.openapi.docs import get_redoc_html
+
+try:
+    from loguru import logger  # type: ignore
+except Exception:  # pragma: no cover
+    logger = logging.getLogger(__name__)
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -15,7 +21,17 @@ from app.core.redis_client import redis_client
 # Loguru 日志配置
 # ========================================
 def setup_logger():
-    """配置 loguru 日志系统"""
+    """配置日志系统（优先 loguru，缺失时回退标准 logging）。"""
+    if not hasattr(logger, "remove"):
+        logging.basicConfig(
+            level=getattr(logging, str(settings.LOG_LEVEL).upper(), logging.INFO),
+            stream=sys.stdout,
+            format="%(asctime)s | %(levelname)s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
+        )
+        logger.info("标准 logging 初始化完成")
+        return
+
+    # loguru 路径
     # 移除默认的 handler
     logger.remove()
 

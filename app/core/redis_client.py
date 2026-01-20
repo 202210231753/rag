@@ -4,9 +4,22 @@ Redis 客户端工具模块
 提供统一的 Redis 连接和基础操作封装。
 """
 
-import redis.asyncio as redis
-from typing import Optional, List, Set
-from loguru import logger
+from __future__ import annotations
+
+from typing import List, Optional, Set
+
+try:
+    import redis.asyncio as redis  # type: ignore
+except Exception:  # pragma: no cover
+    redis = None  # type: ignore[assignment]
+
+try:
+    from loguru import logger  # type: ignore
+except Exception:  # pragma: no cover
+    import logging
+
+    logger = logging.getLogger(__name__)
+
 from app.core.config import settings
 
 
@@ -14,10 +27,14 @@ class RedisClient:
     """Redis 异步客户端封装"""
 
     def __init__(self):
-        self._client: Optional[redis.Redis] = None
+        self._client: Optional[object] = None
 
     async def connect(self):
         """建立 Redis 连接"""
+        if redis is None:
+            logger.warning("未安装 redis 依赖，跳过 Redis 连接初始化")
+            self._client = None
+            return
         try:
             if settings.REDIS_UNIX_SOCKET:
                 self._client = redis.Redis(
@@ -57,7 +74,7 @@ class RedisClient:
             logger.info("Redis 连接已关闭")
 
     @property
-    def client(self) -> redis.Redis:
+    def client(self):
         """获取 Redis 客户端实例"""
         if not self._client:
             raise RuntimeError("Redis 客户端未初始化，请先调用 connect()")

@@ -1,22 +1,23 @@
+from __future__ import annotations
+
 # 依赖注入（如获取 DB 会话、SearchGateway 等）
-from app.core.database import SessionLocal
-from app.rag.search_gateway import SearchGateway
-from app.rag.clients.milvus_client import VectorDBClient
-from app.rag.clients.es_client import SearchEngineClient
-from app.services.embedding_service import EmbeddingService
-from app.services.tokenizer_service import TokenizerService
-from app.rag.strategies import VectorRecallStrategy, KeywordRecallStrategy
-from app.rag.fusion import RRFMergeImpl
-from app.rag.ranking.engine import RankingEngine
-from app.core.redis_client import redis_client
-from app.hot_search.repository import HotSearchRepository, HotSearchKeys
-from app.hot_search.service import GovernanceService, HotSearchService
-from app.core.config import settings
-from loguru import logger
 from functools import lru_cache
-from app.suggest.keys import SuggestKeys
-from app.suggest.repository import SuggestRepository
-from app.suggest.service import SuggestService, SuggestConfig
+from typing import TYPE_CHECKING
+
+try:
+    from loguru import logger  # type: ignore
+except Exception:  # pragma: no cover
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+from app.core.config import settings
+from app.core.database import SessionLocal
+
+if TYPE_CHECKING:
+    from app.hot_search.service import HotSearchService
+    from app.rag.search_gateway import SearchGateway
+    from app.suggest.service import SuggestService
 
 
 # ========================================
@@ -53,6 +54,16 @@ def get_search_gateway() -> SearchGateway:
     Returns:
         SearchGateway 实例
     """
+    from app.core.redis_client import redis_client
+    from app.rag.clients.es_client import SearchEngineClient
+    from app.rag.clients.milvus_client import VectorDBClient
+    from app.rag.fusion import RRFMergeImpl
+    from app.rag.ranking.engine import RankingEngine
+    from app.rag.search_gateway import SearchGateway
+    from app.rag.strategies import KeywordRecallStrategy, VectorRecallStrategy
+    from app.services.embedding_service import EmbeddingService
+    from app.services.tokenizer_service import TokenizerService
+
     try:
         logger.info("正在初始化 SearchGateway...")
 
@@ -109,6 +120,10 @@ def get_hot_search_service() -> HotSearchService:
 
     热搜模块依赖 Redis，不依赖 DB。
     """
+    from app.core.redis_client import redis_client
+    from app.hot_search.repository import HotSearchKeys, HotSearchRepository
+    from app.hot_search.service import GovernanceService, HotSearchService
+
     repo = HotSearchRepository(redis_client, keys=HotSearchKeys.with_prefix(settings.HOT_SEARCH_KEY_PREFIX))
     governance = GovernanceService(repo)
     return HotSearchService(
@@ -131,6 +146,11 @@ def get_suggestion_service() -> SuggestService:
     - 依赖 Redis（history/lexicon）
     - 复用 HotSearchService 提供热搜候选
     """
+    from app.core.redis_client import redis_client
+    from app.suggest.keys import SuggestKeys
+    from app.suggest.repository import SuggestRepository
+    from app.suggest.service import SuggestConfig, SuggestService
+
     keys = SuggestKeys.with_prefix(settings.HOT_SEARCH_KEY_PREFIX)
     repo = SuggestRepository(redis_client, keys=keys)
     return SuggestService(

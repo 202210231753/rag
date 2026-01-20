@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import StreamingResponse
-from app.services.storage_service import storage_service
+from app.services.storage_service import get_storage_service
 import mimetypes
 
 router = APIRouter()
@@ -11,6 +11,7 @@ async def get_file(file_path: str = Path(..., description="文件在存储中的
     通过代理方式从 MinIO 获取文件。
     """
     try:
+        storage_service = get_storage_service()
         # 从 MinIO 获取文件流
         # MinIO 的 get_object 返回的是 urllib3.response.HTTPResponse，它是一个流
         file_response = storage_service.get_file(file_path)

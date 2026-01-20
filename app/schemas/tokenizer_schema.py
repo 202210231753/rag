@@ -31,3 +31,13 @@ class BatchResultResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+
+class TokenizeRequest(BaseModel):
+    text: str = Field(..., description="待分词文本")
+
+
+class TokenizeResponse(BaseModel):
+    tokenizer_id: str = Field(..., alias="tokenizerId", description="当前生效的分词器ID")
+    tokens: list[str] = Field(..., description="分词结果")
+
+    model_config = ConfigDict(populate_by_name=True)

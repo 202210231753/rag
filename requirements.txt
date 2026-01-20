@@ -15,6 +15,9 @@ sqlalchemy>=2.0.25
 # --- Redis ---
 redis[hiredis]>=5.0.0  # 异步Redis客户端
 
+# --- MinIO 对象存储 ---
+minio>=7.2.0
+
 # --- LlamaIndex Core & Components (v0.10+) ---
 # 核心库
 llama-index-core>=0.10.0

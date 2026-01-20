@@ -12,6 +12,16 @@ from app.services.term_weight_service import TermWeightService
 router = APIRouter()
 
 
+def _normalize_scene_id(scene_id: object) -> int:
+    """
+    兼容两种调用方式：
+    1) FastAPI 运行时：scene_id 为 int
+    2) 单元测试/直接函数调用：scene_id 可能是 Query(...) 返回的参数对象
+    """
+    value = getattr(scene_id, "default", scene_id)
+    return int(value)
+
+
 @router.post("", response_model=ApiResponse[SuccessResponse])
 def set_term_weight(
     payload: TermWeightSetRequest,
@@ -21,7 +31,7 @@ def set_term_weight(
     """
     人工配置词权重：手动指定特定词条的权重值，用于干预排序。
     """
-    service = TermWeightService(db, scene_id=scene_id)
+    service = TermWeightService(db, scene_id=_normalize_scene_id(scene_id))
     try:
         service.set_manual_weight(payload.term, payload.weight)
     except ValueError as exc:
@@ -37,7 +47,7 @@ def auto_calc_term_weights(
     """
     自动计算词权重：基于语料库按 IDF 重新计算词条权重（保留人工权重）。
     """
-    service = TermWeightService(db, scene_id=scene_id)
+    service = TermWeightService(db, scene_id=_normalize_scene_id(scene_id))
     try:
         service.auto_recalculate_idf_weights()
     except ValueError as exc:
