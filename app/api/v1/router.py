@@ -25,7 +25,7 @@ def _include_router(module_path: str, prefix: str, tags: Iterable[str]) -> None:
             raise AttributeError(f"{module_path}.router 不存在")
         api_router.include_router(router, prefix=prefix, tags=list(tags))
     except Exception as exc:
-        logger.warning(f"跳过路由模块: {module_path}（原因：{exc}）")
+        logger.warning(f"跳过路由模块: {module_path}（原因：{exc}）") 
 
 
 # ========= 核心/轻依赖模块（优先保证可用） =========
@@ -47,6 +47,7 @@ _include_router("app.api.v1.endpoints.hot_search", "/hot-search", ["热搜服务
 _include_router("app.api.v1.endpoints.suggest", "/suggest", ["输入提示"])
 _include_router("app.api.v1.endpoints.recommender", "/recommender", ["智能推荐模块"])
 _include_router("app.api.v1.endpoints.abtest", "/abtest", ["运营管理-AB实验"])
+_include_router("app.api.v1.endpoints.scene", "/scene", ["业务管控-场景管理"])
 _include_router("app.api.v1.endpoints.chat", "/chat", ["RAG对话模块"])
 
 

@@ -93,3 +93,6 @@ def get_storage_service() -> StorageService:
     if _storage_service is None:
         _storage_service = StorageService()
     return _storage_service
+
+
+storage_service = get_storage_service()

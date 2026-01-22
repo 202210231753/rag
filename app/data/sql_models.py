@@ -5,6 +5,7 @@ from app.core.database import Base
 # 1. 映射旧表 (只读用，或者用于外键关联)
 class UserProfileOld(Base):
     __tablename__ = "user_profiles"
+    __table_args__ = {"extend_existing": True}
     # 必须与数据库实际结构一致，否则报错
     id = Column(Integer, primary_key=True)
     city = Column(String(50))

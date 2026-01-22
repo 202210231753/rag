@@ -15,6 +15,7 @@ from app.models.chunk import Chunk
 from app.models.document import DocStatus, Document
 from app.schemas.chat_schema import ChatRequest, ChatResponse
 from app.services.abtest_service import ABTestService
+from app.rag.chunking.markdown_section import chunk_markdown_structure_aware
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,9 @@ class RagService:
             overwrite=False,
         )
 
-        self.text_splitter = SentenceSplitter(chunk_size=500, chunk_overlap=50)
+        chunk_size = int(getattr(settings, "CHUNK_SIZE", 500))
+        chunk_overlap = int(getattr(settings, "CHUNK_OVERLAP", 50))
+        self.text_splitter = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
     def ingest_document(self, document_id: int, content: str) -> None:
         db = SessionLocal()
@@ -53,41 +56,60 @@ class RagService:
             doc.status = DocStatus.PARSING.value
             db.commit()
 
-            text_chunks = self.text_splitter.split_text(content or "")
-            logger.info("Document %s split into %s chunks.", document_id, len(text_chunks))
+            chunking_version = (
+                f"v2_markdown_sections_cs{self.text_splitter.chunk_size}_co{self.text_splitter.chunk_overlap}"
+            )
+            units = chunk_markdown_structure_aware(
+                markdown=content,
+                splitter=self.text_splitter,
+                chunking_version=chunking_version,
+            )
+            logger.info("Document %s split into %s chunks.", document_id, len(units))
 
             nodes_for_milvus: list[TextNode] = []
-            for i, text in enumerate(text_chunks):
+            for i, unit in enumerate(units):
                 db_chunk = Chunk(
                     document_id=document_id,
-                    content=text,
+                    content=unit.text,
                     index=i,
                     is_active=True,
                     data_type="text",
+                    title=(unit.heading_path[-1] if unit.heading_path else None),
+                    meta_info={
+                        "chunking_version": chunking_version,
+                        "heading_path": unit.heading_path,
+                        "section_index": unit.section_index,
+                        "block_type": unit.block_type,
+                    },
                 )
                 db.add(db_chunk)
                 db.flush()
 
-                embedding = self.embed_model.get_text_embedding(text)
+                embedding = self.embed_model.get_text_embedding(unit.text)
                 nodes_for_milvus.append(
                     TextNode(
-                        text=text,
+                        text=unit.text,
                         id_=str(db_chunk.id),
                         embedding=embedding,
                         metadata={
                             "document_id": document_id,
                             "chunk_id": db_chunk.id,
                             "is_active": True,
+                            "chunking_version": chunking_version,
+                            "heading_path": unit.heading_path,
+                            "section_index": unit.section_index,
+                            "block_type": unit.block_type,
                         },
                     )
                 )
+
                 db_chunk.vector_id = db_chunk.id
 
             if nodes_for_milvus:
                 self.vector_store.add(nodes_for_milvus)
 
             doc.status = DocStatus.COMPLETED.value
-            doc.chunk_count = len(text_chunks)
+            doc.chunk_count = len(units)
             db.commit()
         except Exception as exc:
             logger.error("Ingestion failed for doc %s: %s", document_id, exc)
