@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 
 from app.models.synonym import SynonymGroup, SynonymTerm, SynonymCandidate
 from app.schemas.synonym_schema import SynonymGroupSchema, SynonymTermSchema, RewritePlan
+from app.tokenizer import get_tokenizer_manager
+from app.tokenizer.tokenizers import JiebaTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +259,11 @@ class SynonymService:
         if full_match:
             group, terms = full_match
             matched_groups.append({"canonical": group.canonical, "matched_term": original_query})
+            
+            # 将 canonical 也作为扩展词（如果不是原查询）
+            if group.canonical != original_query:
+                expanded_terms_set.add(group.canonical)
+
             for term in terms:
                 if term.term != original_query:
                     expanded_terms_set.add(term.term)
@@ -282,6 +289,10 @@ class SynonymService:
             if match_result:
                 group, terms = match_result
                 matched_groups.append({"canonical": group.canonical, "matched_term": term})
+
+                # 将 canonical 也作为扩展词（如果不是原词且未超过限制）
+                if group.canonical != term and group.canonical != original_query:
+                    expanded_terms_set.add(group.canonical)
 
                 sorted_terms = sorted(terms, key=lambda t: t.weight, reverse=True)
                 for synonym_term in sorted_terms[: self.max_per_group]:
@@ -310,7 +321,24 @@ class SynonymService:
         return result
 
     def _tokenize(self, text: str) -> List[str]:
-        """简单分词（按空格和标点）。"""
+        """使用系统统一的分词管理器（支持自定义词库+多模型切换）。"""
+        try:
+            # 优先使用 TokenizerManager 以支持自定义词库和配置
+            # 注意：get_tokenizer_manager 可能会涉及数据库查询来加载词库，建议在请求级缓存或优化
+            manager = get_tokenizer_manager(self.db)
+            return manager.tokenize(text)
+        except Exception as e:
+            logger.warning(f"TokenizerManager 初始化或分词失败: {e}，尝试使用备选方案")
+            
+            # 备选方案：直接使用 Jieba
+            try:
+                tokenizer = JiebaTokenizer()
+                if tokenizer.is_available():
+                    return tokenizer.tokenize(text)
+            except Exception:
+                pass
+        
+        # 最后的降级：正则
         tokens = re.split(r"[\s,，。、；;：:！!？?]+", text)
         return [t.strip() for t in tokens if t.strip()]
 

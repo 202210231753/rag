@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 
 from app.models.synonym import SynonymCandidate
@@ -535,7 +535,6 @@ class MiningJobScheduler:
 
             # 检查是否已在同义词组中存在（直接查询数据库）
             from app.models.synonym import SynonymGroup, SynonymTerm
-            from sqlalchemy import and_
             group = (
                 self.db.query(SynonymGroup)
                 .filter(
