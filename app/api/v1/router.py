@@ -49,6 +49,7 @@ _include_router("app.api.v1.endpoints.recommender", "/recommender", ["智能推�
 _include_router("app.api.v1.endpoints.abtest", "/abtest", ["运营管理-AB实验"])
 _include_router("app.api.v1.endpoints.scene", "/scene", ["业务管控-场景管理"])
 _include_router("app.api.v1.endpoints.chat", "/chat", ["RAG对话模块"])
+_include_router("app.api.v1.endpoints.papers", "/papers", ["学术论文搜索"])
 
 
 # ========= 干预子模块（按需） =========
