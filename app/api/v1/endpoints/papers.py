@@ -50,8 +50,8 @@ def search_papers(request: PaperSearchRequest) -> ApiResponse[PaperSearchRespons
         logger.info(f"找到 {result.total} 篇论文")
         
         return ApiResponse(
-            success=True,
-            message="搜索成功",
+            code=200,
+            msg="搜索成功",
             data=result,
         )
         
