@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import logging
+import time
+from datetime import datetime
 from typing import Any, Dict, Optional
+import uuid
 
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import TextNode
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.vector_stores.milvus import MilvusVectorStore
 from sqlalchemy.orm import Session
+from sqlalchemy import Float
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+# 引入 SearchLog 模型
+from app.models.stats import SearchLog
 from app.models.chunk import Chunk
 from app.models.document import DocStatus, Document
 from app.schemas.chat_schema import ChatRequest, ChatResponse
@@ -225,6 +231,8 @@ class RAGService:
 
     def chat(self, req: ChatRequest) -> ChatResponse:
         """执行一次 RAG 对话，并接入 AB 实验分流。"""
+        start_time = time.time()
+        trace_id = str(uuid.uuid4())
 
         experiment_id = req.experiment_id or DEFAULT_RAG_EXPERIMENT_ID
         user_id = req.user_id or "anonymous"
@@ -244,6 +252,9 @@ class RAGService:
             f"（config={rag_config_key}）\n\n你问的是：{req.query}"
         )
 
+        # 记录日志
+        self._log_chat(user_id, req.query, answer, trace_id, start_time)
+
         try:
             self.ab_service.collect_metric(
                 experiment_id=experiment_id,
@@ -258,6 +269,7 @@ class RAGService:
         debug_info: Dict[str, Any] = {
             "routingVars": vars_str,
             "ragConfigKey": rag_config_key,
+            "traceId": trace_id,
         }
 
         return ChatResponse(
@@ -266,6 +278,40 @@ class RAGService:
             version=version,
             debug_info=debug_info,
         )
+
+    def _log_chat(
+        self,
+        user_id: str,
+        query: str,
+        answer: str,
+        trace_id: str,
+        start_time: float,
+        status: int = 1,
+    ) -> None:
+        """Helper to log chat to database consistently."""
+        if not self.db:
+             # 如果 self.db 为 None（在非请求作用域初始化时），尝试临时创建一个 session
+             # 但通常依赖注入会保证 self.db 存在
+             logger.warning("No DB session available for logging chat.")
+             return
+
+        try:
+            latency = time.time() - start_time
+            log_entry = SearchLog(
+                user_id=str(user_id),
+                query=query,
+                answer=answer,
+                trace_id=trace_id,
+                timestamp=datetime.now(),
+                latency=latency,
+                status=status,
+            )
+            self.db.add(log_entry)
+            self.db.commit()
+        except Exception as e:
+            logger.error(f"Failed to log chat: {e}")
+            if self.db:
+                self.db.rollback()
 
 
 rag_service = RagService()

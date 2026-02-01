@@ -2,6 +2,7 @@ from app.models.stats import BehaviorLog, SearchLog, UserProfile
 from app.models.synonym import SynonymCandidate, SynonymGroup, SynonymTerm
 from app.models.term_weight import CorpusDocument, TermWeight
 from app.models.tokenizer import TokenizerConfig, TokenizerTerm
+from app.models.user import UserAccount
 from app.models.abtest import (
 	ABTestAssignment,
 	ABTestExperiment,
@@ -28,4 +29,5 @@ __all__ = [
 	"ABTestMetric",
 	"ABTestReport",
 	"ABTestRoute",
+    "UserAccount",
 ]

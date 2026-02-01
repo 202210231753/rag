@@ -38,6 +38,7 @@ _include_router("app.api.v1.endpoints.knowledge", "/knowledge", ["知识库管�
 _include_router("app.api.v1.endpoints.intervention", "/intervention", ["数据干预模块"])
 _include_router("app.api.v1.endpoints.ingest", "/ingest", ["数据摄入模块"])
 _include_router("app.api.v1.endpoints.files", "/files", ["文件代理模块"])
+_include_router("app.api.v1.endpoints.user", "/users", ["用户模块"])
 _include_router("app.api.v1.endpoints.viewer", "/viewer", ["数据查看模块"])
 _include_router("app.api.v1.endpoints.synonym", "/synonyms", ["同义词模块"])
 _include_router("app.api.v1.endpoints.synonym_mining", "/synonyms/mining", ["同义词挖掘模块"])
@@ -47,8 +48,8 @@ _include_router("app.api.v1.endpoints.hot_search", "/hot-search", ["热搜服务
 _include_router("app.api.v1.endpoints.suggest", "/suggest", ["输入提示"])
 _include_router("app.api.v1.endpoints.recommender", "/recommender", ["智能推荐模块"])
 _include_router("app.api.v1.endpoints.abtest", "/abtest", ["运营管理-AB实验"])
-_include_router("app.api.v1.endpoints.scene", "/scene", ["业务管控-场景管理"])
 _include_router("app.api.v1.endpoints.chat", "/chat", ["RAG对话模块"])
+_include_router("app.api.v1.endpoints.scene", "/scene", ["业务管控-场景管理"])
 
 
 # ========= 干预子模块（按需） =========
@@ -64,4 +65,3 @@ try:
     )
 except Exception as exc:
     logger.warning(f"跳过干预子路由（原因：{exc}）")
-
