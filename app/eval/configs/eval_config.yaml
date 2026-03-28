@@ -1,0 +1,189 @@
+# 评测框架配置
+# 说明：
+# - 尽量保持文件精简；需要时可用 CLI 或环境变量覆盖。
+# - 所有配置段都为可选，代码侧应提供默认值。
+
+# 全局设置
+project:
+  name: "rag_eval"
+  run_name: "dev"
+  run_id: "dev"
+  output_dir: "app/eval/outputs"
+  tags: []
+  seed: 42
+  save_config_snapshot: true
+  # 可选：记录本次评测描述/备注
+  description: ""
+
+# 数据输入
+# 支持格式：jsonl、csv
+# CSV 中 list 类型字段应使用 JSON 字符串，如："[\"a\",\"b\"]"
+data:
+  format: "jsonl"
+  path: "app/eval/data/sample.jsonl"
+  encoding: "utf-8"
+  # 可选：仅评测某个 split（train/dev/test）
+  split: null
+  # 可选：抽样与顺序控制
+  sample_limit: null
+  shuffle: false
+  shuffle_seed: 42
+  # 可选：基于 metadata 的过滤
+  filters: {}
+  # 可选：数据清洗/校验策略
+  validate: true
+  on_validation_error: "fail"  # fail | skip
+  drop_empty_query: true
+  deduplicate: false
+  dedup_key: "id"
+  list_fields: ["answers", "relevant_doc_ids", "relevant_texts", "candidate_doc_ids", "candidate_texts", "contexts"]
+  # 可选：当数据集列名不一致时的字段映射
+  field_map:
+    id: "id"
+    query: "query"
+    answers: "answers"
+    relevant_doc_ids: "relevant_doc_ids"
+    relevant_texts: "relevant_texts"
+    rewrite: "rewrite"
+    metadata: "metadata"
+    candidate_doc_ids: "candidate_doc_ids"
+    candidate_texts: "candidate_texts"
+    contexts: "contexts"
+    split: "split"
+
+# 执行模式
+# engine: api | internal | ragas
+engine:
+  type: "api"
+
+# API 引擎设置
+api:
+  base_url: "http://localhost:8010"
+  timeout_seconds: 30
+  max_concurrency: 10
+  retries: 2
+  retry_backoff_seconds: 0.2
+  retry_on_status: [429, 500, 502, 503, 504]
+  verify_ssl: true
+  circuit_breaker:
+    enabled: false
+    failure_threshold: 5
+    reset_seconds: 30
+  # 可选：API 路由配置（覆盖默认路径）
+  endpoints:
+    retrieve: "/api/v1/search/multi-recall"
+    rerank: ""
+    rewrite: ""
+    generate: ""
+  # 可选鉴权
+  headers:
+    # Authorization: "Bearer YOUR_TOKEN"
+
+# 内部调用引擎设置（engine.type=internal 时使用）
+internal:
+  # 内部网关/服务的 Python import 路径
+  # 示例：app.rag.search_gateway.SearchGateway
+  search_gateway_path: ""
+  # 其他可扩展参数
+  lazy_init: true
+
+# Ragas 引擎设置（engine.type=ragas 时使用）
+ragas:
+  # ragas 相关参数占位
+  enabled: false
+  llm_provider: ""
+  embedding_provider: ""
+  metrics: []
+  batch_size: 8
+
+# 判分器配置（可选，供 rewrite/generation/e2e 使用）
+judges:
+  embedding:
+    enabled: false
+    model_name: "sentence-transformers/all-MiniLM-L6-v2"
+    normalize: true
+  llm:
+    enabled: false
+    provider: "openai"
+    api_key: ""
+    base_url: ""
+    model: "gpt-4o-mini"
+    temperature: 0.0
+    max_tokens: 512
+    timeout_seconds: 30
+
+# 评测任务
+# 选择需要执行的 runner 及其参数
+runners:
+  retrieval:
+    enabled: true
+    top_n: 10
+    recall_top_k: 100
+    metrics: ["recall@k", "mrr", "ndcg@k", "hit@k"]
+    k_values: [1, 3, 5, 10, 50, 100]  # 
+    save_raw_payload: false
+  rerank:
+    enabled: false
+    top_n: 5
+    recall_top_k: 100
+    metrics: ["ndcg@k", "precision@k", "boost_ratio", "hit@1"]
+    k_values: [1, 3, 5, 10]
+    # 候选来源：retrieval | dataset
+    candidate_source: "retrieval" # candidate 来源于 retrieval 结果还是数据集字段
+    # baseline 来源：retrieval | fixed
+    baseline_source: "retrieval"
+    # 当 candidate_source=dataset 时使用
+    candidate_doc_ids_field: "candidate_doc_ids"
+    candidate_texts_field: "candidate_texts"
+  rewrite:
+    enabled: false
+    # rewrite 来源：field | engine
+    rewrite_source: "field"
+    metrics: ["semantic_preservation", "retrieval_gain", "zero_result_reduction"]
+    compare_with_original: true
+    semantic_similarity: "auto"  # auto | embedding | jaccard
+    gain_metric: "ndcg@10"
+  generation:
+    enabled: false
+    metrics: ["faithfulness", "answer_relevance", "answer_correctness", "hallucination_rate"]
+    # context 来源：retrieval | field
+    context_source: "retrieval"
+    max_contexts: 5
+    llm_judge:
+      enabled: false
+      model: ""
+      temperature: 0.0
+      prompt_version: "v1"
+      max_tokens: 512
+      retry_on_fail: true
+  e2e:
+    enabled: false
+    metrics: ["e2e_correctness", "e2e_faithfulness", "latency", "ttft", "cost_per_query"]
+    record_latency: true
+    cost:
+      enabled: false
+      currency: "USD"
+      prompt_cost_per_1k: 0.0
+      completion_cost_per_1k: 0.0
+  ragas:
+    enabled: false
+    metrics: ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
+
+# 报告输出
+report:
+  formats: ["json", "csv", "md"]
+  save_samples: true
+  save_errors: true
+  save_raw_payload: false
+  include_metadata: true
+  aggregate_by: ["metadata.domain"]
+  percentiles: [50, 90, 95]
+  sample_output_file: "samples.jsonl"
+  summary_output_file: "summary.json"
+
+# 日志设置
+logging:
+  level: "INFO"
+  save_logs: true
+  log_file: "app/eval/outputs/eval.log"
+  console: true

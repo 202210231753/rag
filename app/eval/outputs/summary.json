@@ -1,0 +1,33 @@
+{
+  "total": 5,
+  "errors": 5,
+  "metrics": {},
+  "by_stage": {
+    "retrieval": {
+      "count": 5,
+      "metrics": {}
+    }
+  },
+  "by_group": {
+    "metadata.domain=geo": {
+      "count": 1,
+      "metrics": {}
+    },
+    "metadata.domain=programming": {
+      "count": 1,
+      "metrics": {}
+    },
+    "metadata.domain=health": {
+      "count": 1,
+      "metrics": {}
+    },
+    "metadata.domain=devops": {
+      "count": 1,
+      "metrics": {}
+    },
+    "metadata.domain=literature": {
+      "count": 1,
+      "metrics": {}
+    }
+  }
+}

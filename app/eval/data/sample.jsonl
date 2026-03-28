@@ -1,0 +1,5 @@
+{"id":"q1","query":"what is the capital of france","relevant_doc_ids":["doc-1"],"relevant_texts":["Paris is the capital of France."],"metadata":{"domain":"geo"}}
+{"id":"q2","query":"python list append usage","relevant_doc_ids":["doc-2"],"relevant_texts":["Use list.append(x) to add an item to the end of a list."],"metadata":{"domain":"programming"}}
+{"id":"q3","query":"symptoms of flu","relevant_doc_ids":["doc-3","doc-4"],"relevant_texts":["Common flu symptoms include fever and cough.","Body aches and fatigue are also common."],"metadata":{"domain":"health"}}
+{"id":"q4","query":"how to reset git branch to remote","relevant_doc_ids":["doc-5"],"relevant_texts":["Use git fetch and then git reset --hard origin/BRANCH to match the remote."],"metadata":{"domain":"devops"}}
+{"id":"q5","query":"who wrote pride and prejudice","relevant_doc_ids":["doc-6"],"relevant_texts":["Jane Austen wrote Pride and Prejudice."],"metadata":{"domain":"literature"}}
