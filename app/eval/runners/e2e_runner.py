@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import time
+from collections import Counter
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, Sequence
 
 from app.eval.core.interfaces import Engine, EvalContext, EvalResult, EvalSample, Metric, Runner
@@ -27,6 +28,81 @@ async def _maybe_await(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
+
+
+def _simple_tokens(text: str) -> List[str]:
+    if not text:
+        return []
+    if any(ch.isspace() for ch in text):
+        tokens = text.lower().split()
+    else:
+        tokens = list(text.strip().lower())
+    return [t for t in tokens if t.strip()]
+
+
+def _f1_score(pred: str, gold: str) -> float:
+    pred_tokens = _simple_tokens(pred)
+    gold_tokens = _simple_tokens(gold)
+    if not pred_tokens or not gold_tokens:
+        return 0.0
+    pred_counts = Counter(pred_tokens)
+    gold_counts = Counter(gold_tokens)
+    common = sum((pred_counts & gold_counts).values())
+    if common <= 0:
+        return 0.0
+    precision = common / float(len(pred_tokens))
+    recall = common / float(len(gold_tokens))
+    if precision + recall <= 0:
+        return 0.0
+    return 2.0 * precision * recall / (precision + recall)
+
+
+def _max_f1(pred: str, references: Sequence[str]) -> float:
+    scores = [_f1_score(pred, ref) for ref in references if ref]
+    return max(scores) if scores else 0.0
+
+
+def _faithfulness_ratio(answer: str, contexts: Sequence[str]) -> float:
+    answer_tokens = _simple_tokens(answer)
+    if not answer_tokens or not contexts:
+        return 0.0
+    context_tokens = _simple_tokens("\n".join(contexts))
+    if not context_tokens:
+        return 0.0
+    answer_counts = Counter(answer_tokens)
+    context_counts = Counter(context_tokens)
+    common = sum((answer_counts & context_counts).values())
+    return common / float(len(answer_tokens))
+
+
+def _to_float(value: Any) -> Optional[float]:
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def _extract_ttft(payload: Mapping[str, Any]) -> Optional[float]:
+    keys = (
+        "ttft",
+        "ttft_ms",
+        "first_token_ms",
+        "first_token_latency_ms",
+        "first_token_latency",
+    )
+    for key in keys:
+        if key in payload:
+            value = _to_float(payload.get(key))
+            if value is not None:
+                return value
+    timing = payload.get("timing") or payload.get("latencies")
+    if isinstance(timing, Mapping):
+        for key in keys:
+            if key in timing:
+                value = _to_float(timing.get(key))
+                if value is not None:
+                    return value
+    return None
 
 
 def _calc_cost(payload: Mapping[str, Any], cost_cfg: Mapping[str, Any]) -> Optional[float]:
@@ -112,15 +188,27 @@ class E2ERunner(Runner):
 
                 if self.judge_fn:
                     judged = await _maybe_await(self.judge_fn(sample.query, answer, contexts, sample))
-                    if isinstance(judged, Mapping):
-                        payload.update(judged)
+                if isinstance(judged, Mapping):
+                    payload.update(judged)
 
-                if self.record_latency:
+                if self.record_latency and "latency" not in payload:
                     payload["latency"] = (time.perf_counter() - start) * 1000.0
 
                 cost = _calc_cost(payload, self.cost_config)
                 if cost is not None:
                     payload["cost_per_query"] = cost
+
+                if "ttft" not in payload:
+                    ttft = _extract_ttft(payload)
+                    if ttft is not None:
+                        payload["ttft"] = ttft
+
+                if "e2e_correctness" not in payload:
+                    refs = list(sample.answers or [])
+                    payload["e2e_correctness"] = _max_f1(answer, refs)
+
+                if "e2e_faithfulness" not in payload:
+                    payload["e2e_faithfulness"] = _faithfulness_ratio(answer, contexts)
 
                 for metric in self.metrics:
                     metrics[metric.name()] = metric.compute(sample, payload)

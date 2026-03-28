@@ -3,7 +3,7 @@ import asyncio
 from app.eval.core.interfaces import EvalSample
 from app.eval.runners import RetrievalRunner, RewriteRunner, GenerationRunner
 
-
+# 用来模拟 EvalEngine 行为的 DummyEngine
 class DummyEngine:
     async def retrieve(self, query: str, top_n: int, recall_top_k: int):
         return {"results": [{"doc_id": "1", "content": "alpha"}]}

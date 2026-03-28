@@ -9,6 +9,28 @@ from app.eval.metrics.retrieval import _extract_result_ids, _get_relevant_ids, _
 from app.eval.metrics.utils import get_metric_value, to_float
 
 
+def _parse_k(name: str) -> Optional[int]:
+    if "@" not in name:
+        return None
+    try:
+        return int(name.split("@", 1)[1])
+    except Exception:
+        return None
+
+
+def _metric_from_name(name: str) -> Optional[Metric]:
+    key = str(name).strip().lower()
+    if key.startswith("ndcg@"):
+        k = _parse_k(key)
+        return NDCGAtK(k) if k else None
+    if key.startswith("precision@"):
+        k = _parse_k(key)
+        return PrecisionAtK(k) if k else None
+    if key == "hit@1":
+        return HitRateAt1()
+    return None
+
+
 class PrecisionAtK(Metric):
     """Precision@K 指标。"""
 
@@ -76,7 +98,13 @@ class BoostRatio(Metric):
     def compute(self, sample: EvalSample, payload: Mapping[str, Any]) -> float:
         key = f"{sample.id}:{self.metric_name}"
         baseline = self.baseline_scores.get(key, 0.0)
-        current = get_metric_value(payload, self.metric_name, 0.0)
+        current = get_metric_value(payload, self.metric_name, None)
+        if current is None:
+            metric = _metric_from_name(self.metric_name)
+            if metric is not None:
+                current = metric.compute(sample, payload)
+            else:
+                current = 0.0
         baseline = to_float(baseline, 0.0)
         current = to_float(current, 0.0)
         if baseline <= 0:

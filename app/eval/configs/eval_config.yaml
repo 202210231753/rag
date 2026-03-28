@@ -120,7 +120,7 @@ runners:
     top_n: 10
     recall_top_k: 100
     metrics: ["recall@k", "mrr", "ndcg@k", "hit@k"]
-    k_values: [1, 3, 5, 10, 50, 100]
+    k_values: [1, 3, 5, 10, 50, 100]  # 
     save_raw_payload: false
   rerank:
     enabled: false
@@ -129,7 +129,7 @@ runners:
     metrics: ["ndcg@k", "precision@k", "boost_ratio", "hit@1"]
     k_values: [1, 3, 5, 10]
     # 候选来源：retrieval | dataset
-    candidate_source: "retrieval"
+    candidate_source: "retrieval" # candidate 来源于 retrieval 结果还是数据集字段
     # baseline 来源：retrieval | fixed
     baseline_source: "retrieval"
     # 当 candidate_source=dataset 时使用

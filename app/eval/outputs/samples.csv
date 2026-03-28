@@ -1,0 +1,6 @@
+sample_id,stage,latency_ms,engine_type,error,metadata,details
+q1,retrieval,1560.8915769989835,api,API 请求失败: All connection attempts failed,{'domain': 'geo'},"{'sample': {'id': 'q1', 'query': 'what is the capital of france', 'metadata': {'domain': 'geo'}}}"
+q2,retrieval,1409.0690190023452,api,API 请求失败: All connection attempts failed,{'domain': 'programming'},"{'sample': {'id': 'q2', 'query': 'python list append usage', 'metadata': {'domain': 'programming'}}}"
+q3,retrieval,1409.83044099994,api,API 请求失败: All connection attempts failed,{'domain': 'health'},"{'sample': {'id': 'q3', 'query': 'symptoms of flu', 'metadata': {'domain': 'health'}}}"
+q4,retrieval,1408.8501490005,api,API 请求失败: All connection attempts failed,{'domain': 'devops'},"{'sample': {'id': 'q4', 'query': 'how to reset git branch to remote', 'metadata': {'domain': 'devops'}}}"
+q5,retrieval,1408.952699002839,api,API 请求失败: All connection attempts failed,{'domain': 'literature'},"{'sample': {'id': 'q5', 'query': 'who wrote pride and prejudice', 'metadata': {'domain': 'literature'}}}"

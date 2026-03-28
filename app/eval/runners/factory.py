@@ -59,7 +59,7 @@ def _build_llm_judge(config: Mapping[str, Any], local_override: Optional[Mapping
     )
     return LLMJudge(judge_config)
 
-
+# 构建评测 Runner 列表
 def build_runners(config: Mapping[str, Any], engine: Engine) -> List[Runner]:
     runners_cfg = _get_section(config, "runners")
     runners: List[Runner] = []

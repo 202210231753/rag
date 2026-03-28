@@ -34,6 +34,23 @@ def _parse_json_value(value: Any) -> Any:
             parsed = json.loads(value)
             return parsed
         except json.JSONDecodeError:
+            # 兼容 CSV 中的转义字符串（如 \"a\"）
+            if "\\\"" in value or "\\'" in value or "\\\\" in value:
+                try:
+                    unescaped = bytes(value, "utf-8").decode("unicode_escape")
+                    return json.loads(unescaped)
+                except Exception:
+                    pass
+                try:
+                    cleaned = value.replace('\\"', '"').replace("\\'", "'")
+                    return json.loads(cleaned)
+                except Exception:
+                    pass
+                try:
+                    import ast
+                    return ast.literal_eval(value)
+                except Exception:
+                    pass
             return value
     return value
 
@@ -44,6 +61,20 @@ def _parse_json_list(value: Any) -> Any:
         return None
     if isinstance(parsed, list):
         return parsed
+    if isinstance(parsed, str):
+        text = parsed.strip()
+        if text.startswith("[") and text.endswith("]"):
+            # fallback: try to extract quoted items
+            import re
+            items = re.findall(r'"(.*?)"', text)
+            if items:
+                return items
+            # fallback: split by comma
+            inner = text[1:-1].strip()
+            if not inner:
+                return []
+            parts = [p.strip().strip("'\"") for p in inner.split(",")]
+            return [p for p in parts if p]
     return parsed
 
 

@@ -29,7 +29,8 @@ def _read_jsonl(path: Path, encoding: str) -> Iterable[Dict[str, Any]]:
 
 def _read_csv(path: Path, encoding: str) -> Iterable[Dict[str, Any]]:
     with path.open("r", encoding=encoding, newline="") as f:
-        reader = csv.DictReader(f)
+        # 兼容 CSV 中的 \" 转义
+        reader = csv.DictReader(f, escapechar="\\")
         for row in reader:
             yield row
 

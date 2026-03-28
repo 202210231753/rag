@@ -332,3 +332,28 @@ runners:
 - 引入多模型对比报告（A/B + baseline）
 - 增强错误追踪（样本级 raw payload + request/response）
 - 支持分布式评测与缓存
+
+---
+
+## 9. CLI 流程图（Mermaid）
+
+```mermaid
+flowchart TD
+A["CLI 启动\npython -m app.eval.cli"] --> B["加载配置\nconfigs/loader.py"]
+B --> C["加载数据集\ndatasets/loaders.py"]
+C --> D["构建 Engine\nengines/factory.py"]
+D --> E["构建 Runner & Pipeline\nrunners/factory.py"]
+E --> F["执行评测 Pipeline\ncore/pipeline.py"]
+F --> G["生成 EvalResult 列表"]
+G --> H["输出报告\nreports/reporter.py"]
+H --> I["释放资源\nengine.close()"]
+
+subgraph RunnerLoop[Runner 内部循环]
+R1["遍历样本"] --> R2["调用 Engine 请求 API/内部模块"]
+R2 --> R3["返回结果"]
+R3 --> R4["计算指标"]
+R4 --> R5["生成单条 EvalResult"]
+end
+
+F --> RunnerLoop
+```
